@@ -17,7 +17,7 @@ dependencies:
   go_router: ^16.2.5
 
   # 로컬 데이터 저장
-  tostore: ^1.0.5
+  tostore: ^2.2.2
 
   # 알림 (뽀모도로 완료 시)
   flutter_local_notifications: ^19.5.0
