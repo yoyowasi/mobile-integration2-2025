@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:timezone/data/latest.dart' as tz;
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  tz.initializeTimeZones();
-  runApp(const ProviderScope(child: PomodoroApp()));
+  runApp(
+    const ProviderScope(
+      child: PomodoroApp(),
+    ),
+  );
 }
 
 class PomodoroApp extends StatelessWidget {
@@ -13,8 +14,17 @@ class PomodoroApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
+    
+    return MaterialApp(
       title: 'Adaptive Pomodoro',
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text('Adaptive Pomodoro'),
+        ),
+        body: const Center(
+          child: Text('앱 초기 상태입니다.'),
+        ),
+      ),
     );
   }
 }
