@@ -6,7 +6,7 @@ import 'package:mobile_integration2_2025/main.dart';
 void main() {
   testWidgets('HomeScreen displays correctly', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const ProviderScope(child: PomodoroApp()));
+    await tester.pumpWidget(const ProviderScope(child: MyApp()));
 
     // Verify that the AppBar title is rendered.
     expect(find.text('Adaptive Pomodoro'), findsOneWidget);
