@@ -1,42 +1,36 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
-import '../../../providers/settings_provider.dart';
-import 'session_model.dart';
+import 'dart:convert';
+import 'package:mobile_integration2_2025/core/tostore_service.dart';
 
-/// 세션 리스트 상태를 관리하는 Notifier
-final sessionListProvider =
-StateNotifierProvider<SessionListNotifier, List<PomodoroSession>>(
-      (ref) => SessionListNotifier(ref),
-);
+/// 타이머 세션 로컬 저장소 어댑터
+/// - 내부 형식: List[Map[String, dynamic]] 를 JSON으로 직렬화
+class SessionStore {
+  final ToStoreService _store;
+  static const String _key = 'timer_sessions_json';
 
-class SessionListNotifier extends StateNotifier<List<PomodoroSession>> {
-  SessionListNotifier(this.ref) : super([]);
-  final Ref ref; // ← Reader 대신 Ref 사용 (Riverpod v2)
+  SessionStore(this._store);
 
-  /// ToStore에서 세션 목록 로드
-  Future<void> loadFromToStore() async {
-    final ts = ref.read(toStoreServiceProvider);
-    final jsonList = await ts.loadSessionsJson();
-    state = jsonList.map((e) => PomodoroSession.fromJson(e)).toList();
+  /// 세션 목록 로드(없으면 빈 리스트)
+  Future<List<Map<String, dynamic>>> load() async {
+    final raw = await _store.loadSessionsJson();
+    if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
+
+    final decoded = jsonDecode(raw);
+    if (decoded is List) {
+      return decoded
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    }
+    return <Map<String, dynamic>>[];
   }
 
-  /// 세션 추가 + 저장
-  Future<void> addAndPersist(PomodoroSession s) async {
-    state = [...state, s];
-    await _persist();
+  /// 세션 목록 저장
+  Future<void> save(List<Map<String, dynamic>> sessions) async {
+    final raw = jsonEncode(sessions);
+    await _store.saveSessionsJson(raw);
   }
 
-  /// 세션 갱신 + 저장
-  Future<void> updateAndPersist(PomodoroSession s) async {
-    state = [
-      for (final x in state) if (x.id == s.id) s else x,
-    ];
-    await _persist();
-  }
-
-  /// 현재 state를 ToStore에 JSON으로 반영
-  Future<void> _persist() async {
-    final ts = ref.read(toStoreServiceProvider);
-    await ts.saveSessionsJson(state.map((e) => e.toJson()).toList());
+  /// 필요 시 개별 삭제 등 확장 가능
+  Future<void> clear() async {
+    await _store.remove(_key);
   }
 }
