@@ -1,4 +1,7 @@
-import 'package:flutter/material.dart';
+import 'dart:ui';
+
+import 'package:flutter/cupertino.dart';
+
 import 'play_pause_button.dart';
 import 'reset_button.dart';
 import 'page_dots.dart';
