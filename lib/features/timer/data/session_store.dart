@@ -1,36 +1,31 @@
+// lib/features/timer/data/session_store.dart
 import 'dart:convert';
-import 'package:mobile_integration2_2025/core/tostore_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'session_model.dart';
 
-/// 타이머 세션 로컬 저장소 어댑터
-/// - 내부 형식: List[Map[String, dynamic]] 를 JSON으로 직렬화
 class SessionStore {
-  final ToStoreService _store;
-  static const String _key = 'timer_sessions_json';
+  static const _key = 'timer_sessions_json_v1';
 
-  SessionStore(this._store);
-
-  /// 세션 목록 로드(없으면 빈 리스트)
-  Future<List<Map<String, dynamic>>> load() async {
-    final raw = await _store.loadSessionsJson();
-    if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
-
-    final decoded = jsonDecode(raw);
-    if (decoded is List) {
-      return decoded
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
-    }
-    return <Map<String, dynamic>>[];
+  Future<List<SessionModel>> loadAll() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_key);
+    if (raw == null || raw.isEmpty) return <SessionModel>[];
+    final list = jsonDecode(raw) as List<dynamic>;
+    return list
+        .map((e) => SessionModel.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList();
   }
 
-  /// 세션 목록 저장
-  Future<void> save(List<Map<String, dynamic>> sessions) async {
-    final raw = jsonEncode(sessions);
-    await _store.saveSessionsJson(raw);
+  Future<void> append(SessionModel s) async {
+    final prefs = await SharedPreferences.getInstance();
+    final current = await loadAll();
+    current.add(s);
+    final raw = jsonEncode(current.map((e) => e.toJson()).toList());
+    await prefs.setString(_key, raw);
   }
 
-  /// 필요 시 개별 삭제 등 확장 가능
   Future<void> clear() async {
-    await _store.remove(_key);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_key);
   }
 }
