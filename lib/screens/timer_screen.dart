@@ -1,10 +1,12 @@
-// lib/screens/timer_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../features/stats/stats_screen.dart';
+import '../features/timer/data/session_store.dart';
+import '../features/timer/data/session_model.dart';
+import '../widgets/dialogs/quick_log_dialog.dart';
 import '../widgets/dial/dial_canvas.dart';
 import '../widgets/controls/control_bar.dart';
 
-/// 단순 동작 확인용 데모 스크린 (Custom/Auto 모드 기능 추가)
 class TimerScreen extends StatefulWidget {
   const TimerScreen({super.key});
 
@@ -13,50 +15,111 @@ class TimerScreen extends StatefulWidget {
 }
 
 class _TimerScreenState extends State<TimerScreen> {
-  final int totalMinutes = 25; // 기본 25분
-  Timer? _ticker;
-  int elapsed = 0; // 경과 초
-  bool running = false;
-  String _mode = 'custom'; // 'custom' | 'auto' - 기본값은 'custom'
+  final SessionStore _sessionStore = SessionStore();
 
-  void _start() {
-    if (running) return;
-    setState(() => running = true);
-    _ticker = Timer.periodic(const Duration(seconds: 1), (t) {
-      setState(() {
-        elapsed++;
-        if (elapsed >= totalMinutes * 60) {
-          _resetState(); // 완료 시 리셋
-        }
-      });
+  Timer? _ticker;
+  int elapsed = 0;
+  bool running = false;
+  String _mode = 'custom';
+
+  int _customMinutes = 25;
+  int _autoMinutes = 25;
+  DateTime? _startedAt;
+
+  int get _currentTotalMinutes =>
+      _mode == 'auto' ? _autoMinutes : _customMinutes;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAutoFromHistory();
+  }
+
+  Future<void> _loadAutoFromHistory() async {
+    final optimal = await _sessionStore.calculateOptimalMinutes();
+    if (!mounted) return;
+    setState(() {
+      _autoMinutes = optimal;
     });
   }
 
-  void _pause() {
+  void _start() {
+    if (running) return;
+    _startedAt = DateTime.now();
+    setState(() => running = true);
+
+    _ticker = Timer.periodic(const Duration(seconds: 1), (t) {
+      setState(() {
+        elapsed++;
+      });
+
+      if (elapsed >= _currentTotalMinutes * 60) {
+        _finishSession(completed: true);
+        _resetState();
+      }
+    });
+  }
+
+  void _pause() async {
+    if (!running) return;
     _ticker?.cancel();
     setState(() => running = false);
+
+    // Quick Log 다이얼로그 표시
+    String? reason = await QuickLogDialog.show(context);
+
+    // 중단 이유와 함께 기록
+    _finishSession(completed: false, quitReason: reason);
   }
 
   void _toggle() => running ? _pause() : _start();
 
-  // 타이머 완료/리셋 공용
+  Future<void> _finishSession({
+    required bool completed,
+    String? quitReason,
+  }) async {
+    if (elapsed <= 0) return;
+
+    final start =
+        _startedAt ?? DateTime.now().subtract(Duration(seconds: elapsed));
+    final end = DateTime.now();
+
+    final session = SessionModel(
+      startedAt: start,
+      endedAt: end,
+      durationSec: elapsed,
+      mode: _mode,
+      completed: completed,
+      quitReason: quitReason,
+    );
+    await _sessionStore.append(session);
+
+    // 완료 시 Adaptive 알고리즘 적용
+    if (completed) {
+      final optimal = await _sessionStore.calculateOptimalMinutes();
+      if (!mounted) return;
+      setState(() {
+        _autoMinutes = optimal;
+      });
+    }
+  }
+
   void _resetState() {
     _ticker?.cancel();
     setState(() {
       elapsed = 0;
       running = false;
+      _startedAt = null;
     });
   }
 
-  // 모드 변경: 실행 중이면 멈추고 모드만 변경
   void _handleModeChange(bool isAuto) {
     if (running) {
       _pause();
     }
     setState(() {
       _mode = isAuto ? 'auto' : 'custom';
-      // 필요 시 모드 전환 시 초기화하려면 아래 주석 해제
-      // elapsed = 0;
+      elapsed = 0;
     });
   }
 
@@ -69,10 +132,27 @@ class _TimerScreenState extends State<TimerScreen> {
   @override
   Widget build(BuildContext context) {
     final isAutoMode = _mode == 'auto';
-    final showCenterBadge = !isAutoMode; // 오토 모드일 때 중앙 배지 숨김
+    final showCenterBadge = !isAutoMode;
+    final showNumbers = !isAutoMode;
+    final showTicks = !isAutoMode;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bar_chart, color: Colors.black87),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const StatsScreen()),
+              );
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -81,9 +161,11 @@ class _TimerScreenState extends State<TimerScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 22),
               child: PomodoroDial(
-                totalMinutes: totalMinutes,
+                totalMinutes: _currentTotalMinutes,
                 elapsedSeconds: elapsed,
                 showCenterBadge: showCenterBadge,
+                showNumbers: showNumbers,
+                showTicks: showTicks,
               ),
             ),
             ControlBar(

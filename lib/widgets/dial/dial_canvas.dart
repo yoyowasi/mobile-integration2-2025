@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_integration2_2025/widgets/dial/painters/ticks_painter.dart';
 import 'dart:math' as math;
-import 'painters/ticks_painter.dart';
 import 'painters/numbers_painter.dart';
 import 'painters/arc_painter.dart';
 import 'center_badge.dart';
@@ -13,7 +13,7 @@ class PomodoroDial extends StatelessWidget {
     required this.totalMinutes,
     required this.elapsedSeconds,
     this.arcColor = const Color(0xFFE74D50),
-    required this.showCenterBadge, // 새로 추가: 중앙 배지 표시 여부
+    required this.showCenterBadge, required bool showNumbers, required bool showTicks, // 새로 추가: 중앙 배지 표시 여부
   });
 
   final int totalMinutes;     // 전체 분 (예: 25)
