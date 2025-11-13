@@ -1,50 +1,71 @@
-// lib/features/timer/data/session_store.dart
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'session_model.dart';
 
 class SessionStore {
-  static const _key = 'timer_sessions_v1';
+  static const _key = 'timer_sessions_json_v1';
 
   Future<List<SessionModel>> loadAll() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_key);
-    if (raw == null || raw.isEmpty) return <SessionModel>[];
-
-    final list = jsonDecode(raw) as List<dynamic>;
+    if (raw == null || raw.isEmpty) return [];
+    final list = jsonDecode(raw) as List;
     return list
-        .map((e) => SessionModel.fromJson(
-      Map<String, dynamic>.from(e as Map),
-    ))
+        .map((e) => SessionModel.fromJson(Map<String, dynamic>.from(e as Map)))
         .toList();
   }
 
-  Future<void> append(SessionModel session) async {
+  Future<void> append(SessionModel s) async {
     final prefs = await SharedPreferences.getInstance();
     final current = await loadAll();
-
-    current.add(session);
-
-    // 너무 많아지면 앞부분 잘라내기 (예: 200개까지만 유지)
-    const maxSessions = 200;
-    final trimmed = current.length > maxSessions
-        ? current.sublist(current.length - maxSessions)
-        : current;
-
-    final raw = jsonEncode(trimmed.map((e) => e.toJson()).toList());
+    current.add(s);
+    final raw = jsonEncode(current.map((e) => e.toJson()).toList());
     await prefs.setString(_key, raw);
   }
 
-  /// 최근 "완료된" 세션의 분 단위 길이 반환
-  /// (없으면 null)
+  Future<void> clear() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_key);
+  }
+
   Future<int?> getLastCompletedMinutes() async {
-    final sessions = await loadAll();
-    for (var i = sessions.length - 1; i >= 0; i--) {
-      final s = sessions[i];
-      if (s.completed && s.durationSec > 0) {
-        return (s.durationSec / 60).round();
-      }
+    final all = await loadAll();
+    final completed = all.where((s) => s.completed).toList();
+    if (completed.isEmpty) return null;
+    completed.sort((a, b) => b.endedAt.compareTo(a.endedAt));
+    return (completed.first.durationSec / 60).round();
+  }
+
+  Future<List<SessionModel>> getRecentSessions({int limit = 10}) async {
+    final all = await loadAll();
+    all.sort((a, b) => b.endedAt.compareTo(a.endedAt));
+    return all.take(limit).toList();
+  }
+
+  Future<List<SessionModel>> getWeeklySessions() async {
+    final all = await loadAll();
+    final weekAgo = DateTime.now().subtract(const Duration(days: 7));
+    return all.where((s) => s.endedAt.isAfter(weekAgo)).toList()
+      ..sort((a, b) => b.endedAt.compareTo(a.endedAt));
+  }
+
+  Future<int> calculateOptimalMinutes() async {
+    final recent = await getRecentSessions(limit: 10);
+    if (recent.isEmpty) return 25;
+    final completedCount = recent.where((s) => s.completed).length;
+    final completionRate = completedCount / recent.length;
+    final avgMinutes = recent
+        .map((s) => s.durationSec / 60)
+        .reduce((a, b) => a + b) / recent.length;
+
+    int optimalMinutes;
+    if (completionRate >= 0.8) {
+      optimalMinutes = (avgMinutes + 5).round().clamp(15, 45);
+    } else if (completionRate >= 0.5) {
+      optimalMinutes = avgMinutes.round().clamp(15, 45);
+    } else {
+      optimalMinutes = (avgMinutes - 5).round().clamp(15, 45);
     }
-    return null;
+    return optimalMinutes;
   }
 }

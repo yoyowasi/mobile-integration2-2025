@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_integration2_2025/widgets/dial/painters/ticks_painter.dart';
 import 'dart:math' as math;
-import 'painters/ticks_painter.dart';
 import 'painters/numbers_painter.dart';
 import 'painters/arc_painter.dart';
 import 'center_badge.dart';
@@ -13,17 +13,13 @@ class PomodoroDial extends StatelessWidget {
     required this.totalMinutes,
     required this.elapsedSeconds,
     this.arcColor = const Color(0xFFE74D50),
-    required this.showCenterBadge, // 중앙 배지 표시 여부
-    this.showNumbers = true,       // 👈 숫자(눈금 옆 라벨) 표시 여부
-    this.showTicks = true,
+    required this.showCenterBadge, required bool showNumbers, required bool showTicks, // 새로 추가: 중앙 배지 표시 여부
   });
 
-  final int totalMinutes;      // 전체 분 (예: 25)
-  final int elapsedSeconds;    // 경과 초
-  final Color arcColor;        // 원호 색
-  final bool showCenterBadge;  // 중앙 배지 표시 여부
-  final bool showNumbers;      // 👈 눈금 옆 숫자 표시 여부
-  final bool showTicks;
+  final int totalMinutes;     // 전체 분 (예: 25)
+  final int elapsedSeconds;   // 경과 초
+  final Color arcColor;       // 원호 색
+  final bool showCenterBadge; // 중앙 배지 표시 여부
 
   @override
   Widget build(BuildContext context) {
@@ -34,38 +30,23 @@ class PomodoroDial extends StatelessWidget {
 
     final List<Widget> children = [
       // 눈금 레이어
-      if (showTicks)
-        CustomPaint(
-          painter: TicksPainter(),
-          child: const SizedBox.expand(),
-        ),
-
-      // 숫자 레이어 (옵션)
-      if (showNumbers)
-        CustomPaint(
-          painter: NumbersPainter(),
-          child: const SizedBox.expand(),
-        ),
-
+      CustomPaint(painter: TicksPainter(), child: const SizedBox.expand()),
+      // 숫자 레이어
+      CustomPaint(painter: NumbersPainter(), child: const SizedBox.expand()),
       // 남은 시간 원호 레이어
       CustomPaint(
         painter: ArcPainter(
           totalMinutes: totalMinutes,
           remainSeconds: remainSeconds,
           color: arcColor,
-          isAutoMode: !showCenterBadge
         ),
         child: const SizedBox.expand(),
       ),
     ];
 
-    // showCenterBadge가 true일 때만 CenterBadge를 추가
+    // showCenterBadge가 true일 때만 CenterBadge를 추가하여 숫자를 조건부로 숨깁니다.
     if (showCenterBadge) {
-      children.add(
-        CenterBadge(
-          remainMinutes: remainMinutes.clamp(0, totalMinutes),
-        ),
-      );
+      children.add(CenterBadge(remainMinutes: remainMinutes.clamp(0, totalMinutes)));
     }
 
     return AspectRatio(
