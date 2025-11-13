@@ -5,6 +5,7 @@ class SessionModel {
   final int durationSec; // 실사용 시간(초)
   final String mode;     // 'auto' | 'custom'
   final bool completed;  // 목표 달성 여부
+  final String? quitReason;
 
   SessionModel({
     required this.startedAt,
@@ -12,6 +13,7 @@ class SessionModel {
     required this.durationSec,
     required this.mode,
     required this.completed,
+    this.quitReason,
   });
 
   Map<String, dynamic> toJson() => {

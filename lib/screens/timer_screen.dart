@@ -7,6 +7,7 @@ import 'package:mobile_integration2_2025/features/timer/data/session_model.dart'
 import '../services/notify_service.dart';
 import '../widgets/dial/dial_canvas.dart';
 import '../widgets/controls/control_bar.dart';
+import '../widgets/dialogs/quick_log_dialog.dart';
 
 /// 단순 동작 확인용 데모 스크린 (Custom/Auto 모드 + 최근 기록 기반 오토)
 class TimerScreen extends StatefulWidget {
@@ -25,7 +26,7 @@ class _TimerScreenState extends State<TimerScreen> {
   bool running = false;
   String _mode = 'custom'; // 'custom' | 'auto'
 
-  int _customMinutes = 25;  // 커스텀 기준 시간
+  int _customMinutes = 1;  // 커스텀 기준 시간
   int _autoMinutes = 25;    // 오토 모드 기준 시간 (최근 기록에서 갱신)
   DateTime? _startedAt;     // 실제 시작 시간 (기록용)
 
@@ -74,18 +75,22 @@ class _TimerScreenState extends State<TimerScreen> {
     );
   }
 
-  void _pause() {
+  void _pause() async {  // async 추가!
     if (!running) return;
     _ticker?.cancel();
     setState(() => running = false);
 
-    // 중간에 멈춘 것도 기록(미완료)
-    _finishSession(completed: false);
+    // Quick Log 다이얼로그 표시
+    String? reason = await QuickLogDialog.show(context);
+
+    // 중단 이유와 함께 기록
+    _finishSession(completed: false, quitReason: reason);
   }
+
 
   void _toggle() => running ? _pause() : _start();
 
-  Future<void> _finishSession({required bool completed}) async {
+  Future<void> _finishSession({required bool completed, String? quitReason}) async {
     if (elapsed <= 0) return; // 아무것도 안 했으면 스킵
 
     final start =
