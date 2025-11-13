@@ -8,8 +8,8 @@ class CenterBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 104,
-      height: 104,
+      width: 74,
+      height: 74,
       decoration: const BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
