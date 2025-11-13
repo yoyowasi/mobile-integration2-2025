@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/tostore_service.dart';
+import '../services/tostore_service.dart';
 
 /// ToStoreService 인스턴스 제공
 final toStoreServiceProvider = Provider<ToStoreService>((ref) {
