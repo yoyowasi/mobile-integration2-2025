@@ -1,51 +1,32 @@
 // lib/features/timer/data/session_model.dart
+class SessionModel {
+  final DateTime startedAt;
+  final DateTime endedAt;
+  final int durationSec; // 실사용 시간(초)
+  final String mode;     // 'auto' | 'custom'
+  final bool completed;  // 목표 달성 여부
 
-/// 포모도로(집중) 세션 모델
-/// 한 번의 집중 타이머 실행 정보를 저장
-class PomodoroSession {
-  final String id; // 세션 고유 ID
-  final DateTime startedAt; // 시작 시각
-  final DateTime? endedAt; // 종료 시각
-  final int plannedFocusMinutes; // 계획된 집중 시간
-  final int actualFocusMinutes; // 실제 집중한 시간
-  final bool completed; // 완료 여부
-  final DateTime? interruptedAt; // 중단 시각 (있을 경우)
-  final String source; // "auto" 또는 "custom"
-
-  PomodoroSession({
-    required this.id,
+  SessionModel({
     required this.startedAt,
-    this.endedAt,
-    required this.plannedFocusMinutes,
-    required this.actualFocusMinutes,
+    required this.endedAt,
+    required this.durationSec,
+    required this.mode,
     required this.completed,
-    this.interruptedAt,
-    required this.source,
   });
 
-  /// JSON 변환용 (저장 시)
   Map<String, dynamic> toJson() => {
-    'id': id,
     'startedAt': startedAt.toIso8601String(),
-    'endedAt': endedAt?.toIso8601String(),
-    'planned': plannedFocusMinutes,
-    'actual': actualFocusMinutes,
+    'endedAt': endedAt.toIso8601String(),
+    'durationSec': durationSec,
+    'mode': mode,
     'completed': completed,
-    'interruptedAt': interruptedAt?.toIso8601String(),
-    'source': source,
   };
 
-  /// JSON → 객체 복원용 (불러오기 시)
-  static PomodoroSession fromJson(Map<String, dynamic> j) => PomodoroSession(
-    id: j['id'] as String,
-    startedAt: DateTime.parse(j['startedAt'] as String),
-    endedAt: j['endedAt'] == null ? null : DateTime.parse(j['endedAt']),
-    plannedFocusMinutes: (j['planned'] as num).toInt(),
-    actualFocusMinutes: (j['actual'] as num).toInt(),
-    completed: j['completed'] as bool,
-    interruptedAt: j['interruptedAt'] == null
-        ? null
-        : DateTime.parse(j['interruptedAt']),
-    source: j['source'] as String,
+  factory SessionModel.fromJson(Map<String, dynamic> json) => SessionModel(
+    startedAt: DateTime.parse(json['startedAt'] as String),
+    endedAt: DateTime.parse(json['endedAt'] as String),
+    durationSec: json['durationSec'] as int,
+    mode: json['mode'] as String,
+    completed: json['completed'] as bool,
   );
 }
