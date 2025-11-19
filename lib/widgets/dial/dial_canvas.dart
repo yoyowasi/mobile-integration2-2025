@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import 'painters/ticks_painter.dart';
 import 'painters/numbers_painter.dart';
+import 'painters/ticks_painter.dart';
 import 'painters/arc_painter.dart';
 import 'center_badge.dart';
 import 'dial_container.dart';
@@ -13,16 +13,16 @@ class PomodoroDial extends StatelessWidget {
     required this.totalMinutes,
     required this.elapsedSeconds,
     this.arcColor = const Color(0xFFE74D50),
-    required this.showCenterBadge, // 중앙 배지 표시 여부
-    this.showNumbers = true,       // 👈 숫자(눈금 옆 라벨) 표시 여부
-    this.showTicks = true,
+    required this.showCenterBadge,
+    required this.showNumbers,
+    required this.showTicks,
   });
 
-  final int totalMinutes;      // 전체 분 (예: 25)
-  final int elapsedSeconds;    // 경과 초
-  final Color arcColor;        // 원호 색
-  final bool showCenterBadge;  // 중앙 배지 표시 여부
-  final bool showNumbers;      // 👈 눈금 옆 숫자 표시 여부
+  final int totalMinutes;
+  final int elapsedSeconds;
+  final Color arcColor;
+  final bool showCenterBadge;
+  final bool showNumbers;
   final bool showTicks;
 
   @override
@@ -32,34 +32,41 @@ class PomodoroDial extends StatelessWidget {
     final remainSeconds = totalSeconds - clamped;
     final remainMinutes = (remainSeconds / 60).ceil();
 
-    final List<Widget> children = [
-      // 눈금 레이어
-      if (showTicks)
+    final List<Widget> children = [];
+
+    // 🔥 눈금 레이어 (showTicks가 true일 때만)
+    if (showTicks) {
+      children.add(
         CustomPaint(
           painter: TicksPainter(),
           child: const SizedBox.expand(),
         ),
+      );
+    }
 
-      // 숫자 레이어 (옵션)
-      if (showNumbers)
+    // 🔥 숫자 레이어 (showNumbers가 true일 때만)
+    if (showNumbers) {
+      children.add(
         CustomPaint(
           painter: NumbersPainter(),
           child: const SizedBox.expand(),
         ),
+      );
+    }
 
-      // 남은 시간 원호 레이어
+    // 남은 시간 원호 레이어 (항상 표시)
+    children.add(
       CustomPaint(
         painter: ArcPainter(
           totalMinutes: totalMinutes,
           remainSeconds: remainSeconds,
           color: arcColor,
-          isAutoMode: !showCenterBadge
         ),
         child: const SizedBox.expand(),
       ),
-    ];
+    );
 
-    // showCenterBadge가 true일 때만 CenterBadge를 추가
+    // 중앙 배지 (showCenterBadge가 true일 때만)
     if (showCenterBadge) {
       children.add(
         CenterBadge(
@@ -69,7 +76,7 @@ class PomodoroDial extends StatelessWidget {
     }
 
     return AspectRatio(
-      aspectRatio: 1, // 정사각형
+      aspectRatio: 1,
       child: DialContainer(
         child: Stack(
           alignment: Alignment.center,

@@ -1,11 +1,10 @@
-// lib/features/timer/data/session_model.dart
 class SessionModel {
   final DateTime startedAt;
   final DateTime endedAt;
-  final int durationSec; // 실사용 시간(초)
-  final String mode;     // 'auto' | 'custom'
-  final bool completed;  // 목표 달성 여부
-  final String? quitReason;
+  final int durationSec;
+  final String mode;
+  final bool completed;
+  final String? quitReason;  // 🔥 Quick Log용
 
   SessionModel({
     required this.startedAt,
@@ -16,19 +15,25 @@ class SessionModel {
     this.quitReason,
   });
 
-  Map<String, dynamic> toJson() => {
-    'startedAt': startedAt.toIso8601String(),
-    'endedAt': endedAt.toIso8601String(),
-    'durationSec': durationSec,
-    'mode': mode,
-    'completed': completed,
-  };
+  Map<String, dynamic> toJson() {
+    return {
+      'startedAt': startedAt.millisecondsSinceEpoch,
+      'endedAt': endedAt.millisecondsSinceEpoch,
+      'durationSec': durationSec,
+      'mode': mode,
+      'completed': completed,
+      'quitReason': quitReason,
+    };
+  }
 
-  factory SessionModel.fromJson(Map<String, dynamic> json) => SessionModel(
-    startedAt: DateTime.parse(json['startedAt'] as String),
-    endedAt: DateTime.parse(json['endedAt'] as String),
-    durationSec: json['durationSec'] as int,
-    mode: json['mode'] as String,
-    completed: json['completed'] as bool,
-  );
+  factory SessionModel.fromJson(Map<String, dynamic> json) {
+    return SessionModel(
+      startedAt: DateTime.fromMillisecondsSinceEpoch(json['startedAt']),
+      endedAt: DateTime.fromMillisecondsSinceEpoch(json['endedAt']),
+      durationSec: json['durationSec'],
+      mode: json['mode'],
+      completed: json['completed'],
+      quitReason: json['quitReason'],
+    );
+  }
 }
