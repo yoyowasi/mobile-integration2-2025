@@ -49,7 +49,7 @@ class _StatsScreenState extends State<StatsScreen> {
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: Color(0xFFF7F8FA),
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFFE74D50))),
       );
     }
 
@@ -69,6 +69,7 @@ class _StatsScreenState extends State<StatsScreen> {
         automaticallyImplyLeading: false,
       ),
       body: RefreshIndicator(
+        color: const Color(0xFFE74D50),
         onRefresh: _loadData,
         child: ListView(
           padding: const EdgeInsets.all(20),
@@ -140,17 +141,19 @@ class _StatsScreenState extends State<StatsScreen> {
     required Color color,
   }) {
     return Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(13),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),      child: Column(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
         children: [
           Icon(icon, color: color, size: 28),
           const SizedBox(height: 8),
@@ -184,7 +187,7 @@ class _StatsScreenState extends State<StatsScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(13),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -245,7 +248,7 @@ class _StatsScreenState extends State<StatsScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(13),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -273,11 +276,12 @@ class _StatsScreenState extends State<StatsScreen> {
 
   Widget _buildWeeklyChart() {
     final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final maxValue = _weeklyData.values.isEmpty ? 100.0 : _weeklyData.values.reduce((a, b) => a > b ? a : b);
 
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
-        maxY: _weeklyData.values.isEmpty ? 100 : _weeklyData.values.reduce((a, b) => a > b ? a : b) * 1.2,
+        maxY: maxValue * 1.2,
         barTouchData: BarTouchData(enabled: false),
         titlesData: FlTitlesData(
           show: true,
@@ -337,10 +341,12 @@ class _StatsScreenState extends State<StatsScreen> {
     final sortedEntries = _dailyData.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
 
+    final maxValue = sortedEntries.map((e) => e.value).reduce((a, b) => a > b ? a : b);
+
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
-        maxY: sortedEntries.map((e) => e.value).reduce((a, b) => a > b ? a : b) * 1.2,
+        maxY: maxValue * 1.2,
         barTouchData: BarTouchData(enabled: false),
         titlesData: FlTitlesData(
           show: true,
@@ -392,13 +398,13 @@ class _StatsScreenState extends State<StatsScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(13),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: const Center(
           child: Text(
@@ -410,12 +416,12 @@ class _StatsScreenState extends State<StatsScreen> {
     }
 
     final reasonLabels = {
-      'phone': '📱 스마트폰',
-      'tired': '😴 피곤함',
-      'hungry': '🍽️ 배고픔',
-      'distracted': '🤔 집중력 저하',
-      'urgent': '🚶 급한 일',
-      'other': '📝 기타',
+      'phone': '스마트폰',
+      'tired': '피곤함',
+      'hungry': '배고픔',
+      'distracted': '집중력 저하',
+      'urgent': '급한 일',
+      'other': '기타',
     };
 
     return Container(
@@ -425,7 +431,7 @@ class _StatsScreenState extends State<StatsScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(13),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -459,7 +465,7 @@ class _StatsScreenState extends State<StatsScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE74D50).withAlpha(26),
+                      color: const Color(0xFFE74D50).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
