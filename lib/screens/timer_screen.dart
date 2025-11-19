@@ -1,20 +1,22 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../features/stats/stats_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/notify_service.dart';
 import '../features/timer/data/session_store.dart';
 import '../features/timer/data/session_model.dart';
+import '../providers/settings_provider.dart';
+import '../widgets/controls/control_bar.dart';
 import '../widgets/dialogs/quick_log_dialog.dart';
 import '../widgets/dial/dial_canvas.dart';
-import '../widgets/controls/control_bar.dart';
 
-class TimerScreen extends StatefulWidget {
+class TimerScreen extends ConsumerStatefulWidget {
   const TimerScreen({super.key});
 
   @override
-  State<TimerScreen> createState() => _TimerScreenState();
+  ConsumerState<TimerScreen> createState() => _TimerScreenState();
 }
 
-class _TimerScreenState extends State<TimerScreen> {
+class _TimerScreenState extends ConsumerState<TimerScreen> {
   final SessionStore _sessionStore = SessionStore();
 
   Timer? _ticker;
@@ -22,12 +24,16 @@ class _TimerScreenState extends State<TimerScreen> {
   bool running = false;
   String _mode = 'custom';
 
-  int _customMinutes = 25;
   int _autoMinutes = 25;
+  int _sessionCount = 0;
   DateTime? _startedAt;
 
-  int get _currentTotalMinutes =>
-      _mode == 'auto' ? _autoMinutes : _customMinutes;
+  bool get _canUseAutoMode => _sessionCount >= 3;
+
+  int get _currentTotalMinutes {
+    final settings = ref.read(settingsProvider);
+    return _mode == 'auto' ? _autoMinutes : settings.defaultMinutes;
+  }
 
   @override
   void initState() {
@@ -36,9 +42,12 @@ class _TimerScreenState extends State<TimerScreen> {
   }
 
   Future<void> _loadAutoFromHistory() async {
+    final sessions = await _sessionStore.getRecentSessions(limit: 10);
     final optimal = await _sessionStore.calculateOptimalMinutes();
+
     if (!mounted) return;
     setState(() {
+      _sessionCount = sessions.length;
       _autoMinutes = optimal;
     });
   }
@@ -56,19 +65,24 @@ class _TimerScreenState extends State<TimerScreen> {
       if (elapsed >= _currentTotalMinutes * 60) {
         _finishSession(completed: true);
         _resetState();
+
+        // 🔥 알림 표시
+        NotificationService().showCompletionNotification(
+          minutes: _currentTotalMinutes,
+          mode: _mode,
+        );
       }
     });
   }
+
 
   void _pause() async {
     if (!running) return;
     _ticker?.cancel();
     setState(() => running = false);
 
-    // Quick Log 다이얼로그 표시
+    if (!mounted) return;
     String? reason = await QuickLogDialog.show(context);
-
-    // 중단 이유와 함께 기록
     _finishSession(completed: false, quitReason: reason);
   }
 
@@ -94,12 +108,12 @@ class _TimerScreenState extends State<TimerScreen> {
     );
     await _sessionStore.append(session);
 
-    // 완료 시 Adaptive 알고리즘 적용
     if (completed) {
       final optimal = await _sessionStore.calculateOptimalMinutes();
       if (!mounted) return;
       setState(() {
         _autoMinutes = optimal;
+        _sessionCount++;
       });
     }
   }
@@ -114,14 +128,105 @@ class _TimerScreenState extends State<TimerScreen> {
   }
 
   void _handleModeChange(bool isAuto) {
+    print('🔄 모드 변경: ${isAuto ? "Auto" : "Custom"}, 세션: $_sessionCount, 가능: $_canUseAutoMode');
+
+    if (isAuto && !_canUseAutoMode) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.warning, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('AI 학습을 위해 최소 3개의 세션이 필요해요\n현재: $_sessionCount개'),
+              ),
+            ],
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.orange.shade700,
+        ),
+      );
+
+      if (_mode == 'auto') {
+        setState(() {
+          _mode = 'custom';
+        });
+      }
+      return;
+    }
+
     if (running) {
       _pause();
     }
+
     setState(() {
       _mode = isAuto ? 'auto' : 'custom';
       elapsed = 0;
     });
   }
+
+  // void _showCompletionDialog() {
+  //   showDialog(
+  //     context: context,
+  //     barrierDismissible: false,
+  //     builder: (context) => AlertDialog(
+  //       shape: RoundedRectangleBorder(
+  //         borderRadius: BorderRadius.circular(20),
+  //       ),
+  //       title: const Text(
+  //         '🎉 집중 완료!',
+  //         style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+  //         textAlign: TextAlign.center,
+  //       ),
+  //       content: Column(
+  //         mainAxisSize: MainAxisSize.min,
+  //         children: [
+  //           const Text(
+  //             '수고하셨습니다!\n잠시 휴식을 취하세요.',
+  //             textAlign: TextAlign.center,
+  //             style: TextStyle(fontSize: 16),
+  //           ),
+  //           const SizedBox(height: 16),
+  //           if (_mode == 'auto')
+  //             Container(
+  //               padding: const EdgeInsets.all(12),
+  //               decoration: BoxDecoration(
+  //                 color: Colors.blue.shade50,
+  //                 borderRadius: BorderRadius.circular(12),
+  //               ),
+  //               child: Row(
+  //                 mainAxisSize: MainAxisSize.min,
+  //                 children: [
+  //                   const Icon(Icons.auto_awesome, color: Colors.blue, size: 20),
+  //                   const SizedBox(width: 8),
+  //                   Text(
+  //                     '다음 Auto 시간: $_autoMinutes분',
+  //                     style: TextStyle(
+  //                       color: Colors.blue.shade700,
+  //                       fontWeight: FontWeight.bold,
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //         ],
+  //       ),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () => Navigator.pop(context),
+  //           style: TextButton.styleFrom(
+  //             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+  //           ),
+  //           child: const Text(
+  //             '확인',
+  //             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   @override
   void dispose() {
@@ -141,40 +246,144 @@ class _TimerScreenState extends State<TimerScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.bar_chart, color: Colors.black87),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const StatsScreen()),
-              );
-            },
+        title: const Text(
+          'Adaptive Pomodoro',
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
           ),
+        ),
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        actions: [
+          if (isAutoMode)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.auto_awesome,
+                        size: 14,
+                        color: Colors.blue,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$_autoMinutes분',
+                        style: TextStyle(
+                          color: Colors.blue.shade700,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
       body: SafeArea(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const SizedBox(height: 28),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: PomodoroDial(
-                totalMinutes: _currentTotalMinutes,
-                elapsedSeconds: elapsed,
-                showCenterBadge: showCenterBadge,
-                showNumbers: showNumbers,
-                showTicks: showTicks,
+            if (!_canUseAutoMode && isAutoMode)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.orange.shade700, size: 22),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'AI 학습을 위해 최소 3개의 세션이 필요해요\n현재: $_sessionCount개',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.orange.shade900,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isAutoMode ? Colors.blue.shade50 : Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isAutoMode ? Icons.auto_awesome : Icons.tune,
+                        size: 18,
+                        color: isAutoMode ? Colors.blue : Colors.orange,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          isAutoMode
+                              ? 'AI가 $_autoMinutes분으로 추천했어요'
+                              : '원하는 시간을 직접 설정하세요',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isAutoMode ? Colors.blue.shade900 : Colors.orange.shade900,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: 4),
+
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: PomodoroDial(
+                  totalMinutes: _currentTotalMinutes,
+                  elapsedSeconds: elapsed,
+                  showCenterBadge: showCenterBadge,
+                  showNumbers: showNumbers,
+                  showTicks: showTicks,
+                ),
               ),
             ),
+
+            const SizedBox(height: 20),
+
             ControlBar(
               isRunning: running,
               onToggle: _toggle,
               isAutoMode: isAutoMode,
+              canUseAutoMode: _canUseAutoMode,
               onModeChanged: _handleModeChange,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
           ],
         ),
       ),

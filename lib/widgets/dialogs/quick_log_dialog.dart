@@ -6,10 +6,10 @@ class QuickLogDialog {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
         ),
         title: const Text(
-          '중단 원인',
+          '중단 원인을 선택해주세요',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         contentPadding: const EdgeInsets.symmetric(vertical: 16),
@@ -20,6 +20,7 @@ class QuickLogDialog {
             _buildOption(context, '피곤함', 'tired'),
             _buildOption(context, '배고픔/갈증', 'hunger'),
             _buildOption(context, '집중력 저하', 'distracted'),
+            _buildOption(context, '급한 일', 'urgent'),
             _buildOption(context, '기타', 'other'),
           ],
         ),
@@ -35,7 +36,7 @@ class QuickLogDialog {
     return InkWell(
       onTap: () => Navigator.pop(context, value),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
         width: double.infinity,
         child: Text(
           label,

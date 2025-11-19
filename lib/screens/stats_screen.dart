@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
-
-import '../timer/data/session_model.dart';
-import '../timer/data/session_store.dart';
+import '../features/timer/data/session_store.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -13,128 +10,149 @@ class StatsScreen extends StatefulWidget {
 }
 
 class _StatsScreenState extends State<StatsScreen> {
-  final SessionStore _store = SessionStore();
-  bool _isWeeklyView = true;
+  final SessionStore _sessionStore = SessionStore();
+
+  bool _isWeekly = true; // true: 주간, false: 일별
+  Map<String, double> _weeklyData = {};
+  Map<int, double> _dailyData = {};
+  Map<String, dynamic> _totalStats = {};
+  List<Map<String, dynamic>> _topReasons = [];
+
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+
+    final weekly = await _sessionStore.getWeeklyData();
+    final daily = await _sessionStore.getDailyData();
+    final stats = await _sessionStore.getTotalStats();
+    final reasons = await _sessionStore.getTopQuitReasons();
+
+    if (!mounted) return;
+    setState(() {
+      _weeklyData = weekly;
+      _dailyData = daily;
+      _totalStats = stats;
+      _topReasons = reasons;
+      _isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFF7F8FA),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('통계', style: TextStyle(color: Colors.black87)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          TextButton.icon(
-            onPressed: () {
-              setState(() {
-                _isWeeklyView = !_isWeeklyView;
-              });
-            },
-            icon: Icon(_isWeeklyView ? Icons.calendar_today : Icons.view_week),
-            label: Text(_isWeeklyView ? '주간' : '일별'),
+        title: const Text(
+          '통계',
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
           ),
-        ],
+        ),
+        centerTitle: true,
+        automaticallyImplyLeading: false,
       ),
-      body: FutureBuilder<List<SessionModel>>(
-        future: _store.getWeeklySessions(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: RefreshIndicator(
+        onRefresh: _loadData,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            // 요약 카드
+            _buildSummaryCards(),
 
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return _buildEmptyState();
-          }
+            const SizedBox(height: 24),
 
-          final sessions = snapshot.data!;
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSummaryCards(sessions),
-                const SizedBox(height: 24),
-                _buildChartSection(sessions),
-                const SizedBox(height: 24),
-                _buildQuitReasonAnalysis(sessions),
-              ],
-            ),
-          );
-        },
+            // 차트 토글
+            _buildChartToggle(),
+
+            const SizedBox(height: 16),
+
+            // 차트
+            _buildChart(),
+
+            const SizedBox(height: 24),
+
+            // 중단 원인 TOP 3
+            _buildQuitReasons(),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildSummaryCards(List<SessionModel> sessions) {
-    final totalMinutes = sessions.fold<int>(
-      0,
-          (sum, s) => sum + (s.durationSec ~/ 60),
-    );
-    final completedCount = sessions.where((s) => s.completed).length;
-    final completionRate = sessions.isEmpty
-        ? 0.0
-        : completedCount / sessions.length * 100;
+  Widget _buildSummaryCards() {
+    final totalMinutes = _totalStats['totalMinutes'] ?? 0;
+    final completedCount = _totalStats['completedCount'] ?? 0;
+    final completionRate = (_totalStats['completionRate'] ?? 0.0) * 100;
 
     return Row(
       children: [
         Expanded(
-          child: _buildStatCard(
-            '총 집중 시간',
-            '${totalMinutes}분',
-            Icons.timer,
-            Colors.blue,
+          child: _buildSummaryCard(
+            title: '총 집중 시간',
+            value: '${totalMinutes}분',
+            icon: Icons.timer,
+            color: const Color(0xFFE74D50),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: _buildStatCard(
-            '완료한 세션',
-            '$completedCount개',
-            Icons.check_circle,
-            Colors.green,
+          child: _buildSummaryCard(
+            title: '완료 세션',
+            value: '$completedCount개',
+            icon: Icons.check_circle,
+            color: Colors.green,
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: _buildStatCard(
-            '완료율',
-            '${completionRate.toStringAsFixed(0)}%',
-            Icons.trending_up,
-            Colors.orange,
+          child: _buildSummaryCard(
+            title: '완료율',
+            value: '${completionRate.toStringAsFixed(0)}%',
+            icon: Icons.show_chart,
+            color: Colors.blue,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildStatCard(
-      String label,
-      String value,
-      IconData icon,
-      Color color,
-      ) {
+  Widget _buildSummaryCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(13),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),      child: Column(
         children: [
-          Icon(icon, color: color, size: 24),
+          Icon(icon, color: color, size: 28),
           const SizedBox(height: 8),
           Text(
             value,
@@ -146,10 +164,72 @@ class _StatsScreenState extends State<StatsScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            label,
+            title,
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               color: Colors.black54,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChartToggle() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(13),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _isWeekly = true),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: _isWeekly ? const Color(0xFFE74D50) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '주간',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _isWeekly ? Colors.white : Colors.black54,
+                    fontWeight: _isWeekly ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _isWeekly = false),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: !_isWeekly ? const Color(0xFFE74D50) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '일별',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: !_isWeekly ? Colors.white : Colors.black54,
+                    fontWeight: !_isWeekly ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -157,7 +237,7 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildChartSection(List<SessionModel> sessions) {
+  Widget _buildChart() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -165,7 +245,7 @@ class _StatsScreenState extends State<StatsScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha(13),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -175,141 +255,168 @@ class _StatsScreenState extends State<StatsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _isWeeklyView ? '주간 집중 시간' : '일별 집중 시간',
+            _isWeekly ? '주간 집중 시간' : '일별 집중 시간',
             style: const TextStyle(
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 20),
           SizedBox(
             height: 200,
-            child: _buildBarChart(sessions),
+            child: _isWeekly ? _buildWeeklyChart() : _buildDailyChart(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBarChart(List<SessionModel> sessions) {
-    // 일별 데이터 그룹화
-    final Map<String, int> dailyMinutes = {};
-
-    for (var session in sessions) {
-      final dateKey = DateFormat('MM/dd').format(session.endedAt);
-      dailyMinutes[dateKey] =
-          (dailyMinutes[dateKey] ?? 0) + (session.durationSec ~/ 60);
-    }
-
-    // 최근 7일 데이터 생성
-    final now = DateTime.now();
-    final List<BarChartGroupData> barGroups = [];
-    double maxValue = 60.0;
-
-    for (int i = 6; i >= 0; i--) {
-      final date = now.subtract(Duration(days: i));
-      final dateKey = DateFormat('MM/dd').format(date);
-      final minutes = (dailyMinutes[dateKey] ?? 0).toDouble();
-
-      if (minutes > maxValue) maxValue = minutes;
-
-      barGroups.add(
-        BarChartGroupData(
-          x: 6 - i,
-          barRods: [
-            BarChartRodData(
-              toY: minutes,
-              color: Colors.blue,
-              width: 16,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(6),
-                topRight: Radius.circular(6),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+  Widget _buildWeeklyChart() {
+    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
-        maxY: maxValue * 1.2,
-        barGroups: barGroups,
+        maxY: _weeklyData.values.isEmpty ? 100 : _weeklyData.values.reduce((a, b) => a > b ? a : b) * 1.2,
+        barTouchData: BarTouchData(enabled: false),
         titlesData: FlTitlesData(
           show: true,
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
               getTitlesWidget: (value, meta) {
-                final date = now.subtract(Duration(days: 6 - value.toInt()));
-                return Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    DateFormat('E').format(date).substring(0, 1),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.black54,
+                if (value.toInt() >= 0 && value.toInt() < days.length) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      days[value.toInt()],
+                      style: const TextStyle(fontSize: 12, color: Colors.black54),
                     ),
-                  ),
-                );
+                  );
+                }
+                return const Text('');
               },
             ),
           ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 40,
-              interval: 30,
-              getTitlesWidget: (value, meta) {
-                return Text(
-                  '${value.toInt()}',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.black54,
-                  ),
-                );
-              },
-            ),
-          ),
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
+          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          horizontalInterval: 30,
-          getDrawingHorizontalLine: (value) {
-            return FlLine(
-              color: Colors.black12,
-              strokeWidth: 1,
-            );
-          },
-        ),
-        borderData: FlBorderData(
-          show: false,
-        ),
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        barGroups: List.generate(days.length, (index) {
+          final day = days[index];
+          final value = _weeklyData[day] ?? 0;
+
+          return BarChartGroupData(
+            x: index,
+            barRods: [
+              BarChartRodData(
+                toY: value,
+                color: const Color(0xFFE74D50),
+                width: 20,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+              ),
+            ],
+          );
+        }),
       ),
     );
   }
 
-  Widget _buildQuitReasonAnalysis(List<SessionModel> sessions) {
-    final quitReasons = <String, int>{};
-
-    for (var session in sessions) {
-      if (session.quitReason != null && !session.completed) {
-        quitReasons[session.quitReason!] =
-            (quitReasons[session.quitReason!] ?? 0) + 1;
-      }
+  Widget _buildDailyChart() {
+    if (_dailyData.isEmpty) {
+      return const Center(
+        child: Text(
+          '데이터가 없습니다',
+          style: TextStyle(color: Colors.black54),
+        ),
+      );
     }
 
-    if (quitReasons.isEmpty) {
-      return const SizedBox.shrink();
+    final sortedEntries = _dailyData.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: sortedEntries.map((e) => e.value).reduce((a, b) => a > b ? a : b) * 1.2,
+        barTouchData: BarTouchData(enabled: false),
+        titlesData: FlTitlesData(
+          show: true,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                final index = value.toInt();
+                if (index >= 0 && index < sortedEntries.length) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      '${sortedEntries[index].key}',
+                      style: const TextStyle(fontSize: 10, color: Colors.black54),
+                    ),
+                  );
+                }
+                return const Text('');
+              },
+            ),
+          ),
+          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        barGroups: List.generate(sortedEntries.length, (index) {
+          return BarChartGroupData(
+            x: index,
+            barRods: [
+              BarChartRodData(
+                toY: sortedEntries[index].value,
+                color: const Color(0xFFE74D50),
+                width: 16,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+              ),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildQuitReasons() {
+    if (_topReasons.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(13),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        ),
+        child: const Center(
+          child: Text(
+            '중단 기록이 없습니다',
+            style: TextStyle(color: Colors.black54),
+          ),
+        ),
+      );
     }
+
+    final reasonLabels = {
+      'phone': '📱 스마트폰',
+      'tired': '😴 피곤함',
+      'hungry': '🍽️ 배고픔',
+      'distracted': '🤔 집중력 저하',
+      'urgent': '🚶 급한 일',
+      'other': '📝 기타',
+    };
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -318,7 +425,7 @@ class _StatsScreenState extends State<StatsScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha(13),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -328,33 +435,39 @@ class _StatsScreenState extends State<StatsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '중단 원인 분석',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            '주요 중단 원인',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 16),
-          ...quitReasons.entries.map((entry) {
-            final emoji = _getEmojiForReason(entry.key);
+          ..._topReasons.map((reason) {
+            final label = reasonLabels[reason['reason']] ?? '❓ 알 수 없음';
+            final count = reason['count'];
+
             return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 12),
               child: Row(
                 children: [
-                  Text(emoji, style: const TextStyle(fontSize: 20)),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(_getReasonLabel(entry.key))),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: const TextStyle(fontSize: 14),
                     ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.red.shade50,
+                      color: const Color(0xFFE74D50).withAlpha(26),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '${entry.value}회',
-                      style: TextStyle(
-                        color: Colors.red.shade700,
+                      '$count회',
+                      style: const TextStyle(
+                        fontSize: 13,
                         fontWeight: FontWeight.bold,
+                        color: Color(0xFFE74D50),
                       ),
                     ),
                   ),
@@ -362,49 +475,6 @@ class _StatsScreenState extends State<StatsScreen> {
               ),
             );
           }).toList(),
-        ],
-      ),
-    );
-  }
-
-  String _getEmojiForReason(String reason) {
-    switch (reason) {
-      case 'phone': return '📱';
-      case 'tired': return '😴';
-      case 'hunger': return '🍽️';
-      case 'distracted': return '🤔';
-      case 'urgent': return '🚶';
-      default: return '📝';
-    }
-  }
-
-  String _getReasonLabel(String reason) {
-    switch (reason) {
-      case 'phone': return '스마트폰 사용';
-      case 'tired': return '피곤함';
-      case 'hunger': return '배고픔/갈증';
-      case 'distracted': return '집중력 저하';
-      case 'urgent': return '급한 일';
-      default: return '기타';
-    }
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(Icons.inbox, size: 80, color: Colors.black26),
-          SizedBox(height: 16),
-          Text(
-            '아직 기록된 세션이 없습니다',
-            style: TextStyle(fontSize: 16, color: Colors.black54),
-          ),
-          SizedBox(height: 8),
-          Text(
-            '타이머를 사용하면 통계가 표시됩니다',
-            style: TextStyle(fontSize: 14, color: Colors.black38),
-          ),
         ],
       ),
     );
