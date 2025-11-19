@@ -24,7 +24,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
   bool running = false;
   String _mode = 'custom';
 
-  int _autoMinutes = 25;
+  int _autoMinutes = 25; // 초기값은 25로 두되, Auto 모드 진입 조건(_canUseAutoMode)에 의해 보호됨
   int _sessionCount = 0;
   DateTime? _startedAt;
 
@@ -43,12 +43,16 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
 
   Future<void> _loadAutoFromHistory() async {
     final sessions = await _sessionStore.getRecentSessions(limit: 10);
+    // 🔥 [수정] null 반환 가능성 처리
     final optimal = await _sessionStore.calculateOptimalMinutes();
 
     if (!mounted) return;
     setState(() {
       _sessionCount = sessions.length;
-      _autoMinutes = optimal;
+      // 데이터가 있어서 계산된 값이 있을 때만 업데이트
+      if (optimal != null) {
+        _autoMinutes = optimal;
+      }
     });
   }
 
@@ -109,10 +113,13 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
     await _sessionStore.append(session);
 
     if (completed) {
+      // 🔥 [수정] null 반환 가능성 처리
       final optimal = await _sessionStore.calculateOptimalMinutes();
       if (!mounted) return;
       setState(() {
-        _autoMinutes = optimal;
+        if (optimal != null) {
+          _autoMinutes = optimal;
+        }
         _sessionCount++;
       });
     }
@@ -138,7 +145,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
               const Icon(Icons.warning, color: Colors.white),
               const SizedBox(width: 8),
               Expanded(
-                child: Text('AI 학습을 위해 최소 3개의 세션이 필요해요\n현재: $_sessionCount개'),
+                child: Text('학습을 위해 최소 3개의 세션이 필요해요\n현재: $_sessionCount개'),
               ),
             ],
           ),
@@ -165,68 +172,6 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
       elapsed = 0;
     });
   }
-
-  // void _showCompletionDialog() {
-  //   showDialog(
-  //     context: context,
-  //     barrierDismissible: false,
-  //     builder: (context) => AlertDialog(
-  //       shape: RoundedRectangleBorder(
-  //         borderRadius: BorderRadius.circular(20),
-  //       ),
-  //       title: const Text(
-  //         '🎉 집중 완료!',
-  //         style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-  //         textAlign: TextAlign.center,
-  //       ),
-  //       content: Column(
-  //         mainAxisSize: MainAxisSize.min,
-  //         children: [
-  //           const Text(
-  //             '수고하셨습니다!\n잠시 휴식을 취하세요.',
-  //             textAlign: TextAlign.center,
-  //             style: TextStyle(fontSize: 16),
-  //           ),
-  //           const SizedBox(height: 16),
-  //           if (_mode == 'auto')
-  //             Container(
-  //               padding: const EdgeInsets.all(12),
-  //               decoration: BoxDecoration(
-  //                 color: Colors.blue.shade50,
-  //                 borderRadius: BorderRadius.circular(12),
-  //               ),
-  //               child: Row(
-  //                 mainAxisSize: MainAxisSize.min,
-  //                 children: [
-  //                   const Icon(Icons.auto_awesome, color: Colors.blue, size: 20),
-  //                   const SizedBox(width: 8),
-  //                   Text(
-  //                     '다음 Auto 시간: $_autoMinutes분',
-  //                     style: TextStyle(
-  //                       color: Colors.blue.shade700,
-  //                       fontWeight: FontWeight.bold,
-  //                     ),
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //         ],
-  //       ),
-  //       actions: [
-  //         TextButton(
-  //           onPressed: () => Navigator.pop(context),
-  //           style: TextButton.styleFrom(
-  //             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-  //           ),
-  //           child: const Text(
-  //             '확인',
-  //             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
 
   @override
   void dispose() {
