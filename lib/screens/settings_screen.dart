@@ -81,7 +81,7 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'AI가 15분 ~ 45분 범위에서 최적 시간을 추천합니다',
+                        'AI가 15분 ~ 60분 범위에서 최적 시간을 추천합니다',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.blue.shade700,
@@ -194,7 +194,7 @@ class SettingsScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha(13),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -234,7 +234,7 @@ class SettingsScreen extends ConsumerWidget {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE74D50).withOpacity(0.1),
+                  color: const Color(0xFFE74D50).withAlpha(26),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -295,7 +295,7 @@ class SettingsScreen extends ConsumerWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withAlpha(13),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -306,7 +306,7 @@ class SettingsScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withAlpha(26),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 24),
@@ -350,7 +350,7 @@ class SettingsScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha(13),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

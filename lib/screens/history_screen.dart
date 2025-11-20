@@ -27,8 +27,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final sessions = await _sessionStore.getAll();
 
     if (!mounted) return;
+
+    // [수정됨] 단순히 뒤집는 대신, 시작 시간(startedAt)을 기준으로 내림차순(최신순) 정렬합니다.
+    // b.compareTo(a)를 사용하면 최신 날짜가 앞으로 옵니다.
+    sessions.sort((a, b) => b.startedAt.compareTo(a.startedAt));
+
     setState(() {
-      _sessions = sessions.reversed.toList(); // 최신순
+      _sessions = sessions;
       _isLoading = false;
     });
   }
@@ -41,7 +46,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
 
     // SharedPreferences에 다시 저장
-    final prefs = await _sessionStore.getAll();
+    // 불필요한 변수 할당을 제거하고 로직을 유지합니다.
     await _sessionStore.clear();
     for (var s in allSessions) {
       await _sessionStore.append(s);
@@ -276,7 +281,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withAlpha(13),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -289,8 +294,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: session.completed
-                    ? Colors.green.withOpacity(0.1)
-                    : Colors.orange.withOpacity(0.1),
+                    ? Colors.green.withAlpha(26)
+                    : Colors.orange.withAlpha(26),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -327,8 +332,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: session.mode == 'auto'
-                              ? Colors.blue.withOpacity(0.1)
-                              : Colors.purple.withOpacity(0.1),
+                              ? Colors.blue.withAlpha(26)
+                              : Colors.purple.withAlpha(26),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(

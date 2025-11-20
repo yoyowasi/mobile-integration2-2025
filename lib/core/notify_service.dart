@@ -79,32 +79,32 @@ class NotificationService {
   }
 
   /// 휴식 시작 알림 (선택)
-  Future<void> showBreakNotification() async {
-    const AndroidNotificationDetails androidDetails =
-    AndroidNotificationDetails(
-      'pomodoro_channel',
-      'Pomodoro Timer',
-      channelDescription: '뽀모도로 타이머 알림',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-
-    const NotificationDetails details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-
-    await _notifications.show(
-      1,
-      '☕ 휴식 시간',
-      '5분간 휴식하세요!',
-      details,
-    );
-  }
+  // Future<void> showBreakNotification() async {
+  //   const AndroidNotificationDetails androidDetails =
+  //   AndroidNotificationDetails(
+  //     'pomodoro_channel',
+  //     'Pomodoro Timer',
+  //     channelDescription: '뽀모도로 타이머 알림',
+  //     importance: Importance.high,
+  //     priority: Priority.high,
+  //   );
+  //
+  //   const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+  //     presentAlert: true,
+  //     presentBadge: true,
+  //     presentSound: true,
+  //   );
+  //
+  //   const NotificationDetails details = NotificationDetails(
+  //     android: androidDetails,
+  //     iOS: iosDetails,
+  //   );
+  //
+  //   await _notifications.show(
+  //     1,
+  //     '☕ 휴식 시간',
+  //     '5분간 휴식하세요!',
+  //     details,
+  //   );
+  // }
 }

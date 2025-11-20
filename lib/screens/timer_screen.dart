@@ -28,7 +28,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
   int _sessionCount = 0;
   DateTime? _startedAt;
 
-  bool get _canUseAutoMode => _sessionCount >= 3;
+  bool get _canUseAutoMode => _sessionCount >= 5;
 
   int get _currentTotalMinutes {
     final settings = ref.read(settingsProvider);
@@ -145,7 +145,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
               const Icon(Icons.warning, color: Colors.white),
               const SizedBox(width: 8),
               Expanded(
-                child: Text('학습을 위해 최소 3개의 세션이 필요해요\n현재: $_sessionCount개'),
+                child: Text('학습을 위해 최소 5개의 세션이 필요해요\n현재: $_sessionCount개'),
               ),
             ],
           ),
@@ -258,7 +258,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'AI 학습을 위해 최소 3개의 세션이 필요해요\n현재: $_sessionCount개',
+                          'AI 학습을 위해 최소 5개의 세션이 필요해요\n현재: $_sessionCount개',
                           style: TextStyle(
                             fontSize: 11,
                             color: Colors.orange.shade900,

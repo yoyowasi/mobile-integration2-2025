@@ -179,8 +179,8 @@ class SessionStore {
       predictedMinutes -= 5;
     }
 
-    // 6. 최종 포맷팅 (5분 단위 반올림 & 범위 제한)
-    int result = (predictedMinutes / 5).round() * 5;
-    return result.clamp(15, 60); // 최소 15분, 최대 60분
+    // 6. 최종 포맷팅 (분 단위 반올림 & 범위 제한)
+    int result = predictedMinutes.round();
+    return result.clamp(10, 60); // 최소 15분, 최대 60분
   }
 }
