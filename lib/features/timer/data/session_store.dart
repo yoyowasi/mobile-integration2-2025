@@ -30,7 +30,7 @@ class SessionStore {
     await prefs.remove(_key);
   }
 
-  // 🔥 === 통계용 메서드 추가 ===
+  // 🔥 === 통계용 메서드 ===
 
   /// 주간 데이터 (최근 7일)
   Future<Map<String, double>> getWeeklyData() async {
@@ -40,7 +40,6 @@ class SessionStore {
 
     final weekSessions = all.where((s) => s.startedAt.isAfter(weekAgo)).toList();
 
-    // 요일별 집중 시간 (분 단위)
     final Map<String, double> dayData = {
       'Mon': 0,
       'Tue': 0,
@@ -52,7 +51,7 @@ class SessionStore {
     };
 
     for (var session in weekSessions) {
-      final weekday = session.startedAt.weekday; // 1=Monday, 7=Sunday
+      final weekday = session.startedAt.weekday;
       final dayKey = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][weekday - 1];
       dayData[dayKey] = (dayData[dayKey] ?? 0) + (session.durationSec / 60);
     }
@@ -68,7 +67,6 @@ class SessionStore {
 
     final monthSessions = all.where((s) => s.startedAt.isAfter(monthAgo)).toList();
 
-    // 날짜별 집중 시간 (분 단위)
     final Map<int, double> dayData = {};
 
     for (var session in monthSessions) {
@@ -112,14 +110,12 @@ class SessionStore {
 
     if (quitSessions.isEmpty) return [];
 
-    // 원인별 카운트
     final Map<String, int> reasonCount = {};
     for (var session in quitSessions) {
       final reason = session.quitReason ?? 'unknown';
       reasonCount[reason] = (reasonCount[reason] ?? 0) + 1;
     }
 
-    // 정렬 후 TOP 3
     final sorted = reasonCount.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
@@ -129,25 +125,62 @@ class SessionStore {
     }).toList();
   }
 
-  /// Adaptive 알고리즘
-  Future<int> calculateOptimalMinutes() async {
-    final recent = await getRecentSessions(limit: 10);
+  Future<int?> calculateOptimalMinutes() async {
+    final allSessions = await getAll();
 
-    if (recent.isEmpty) return 25;
+    // 1. 데이터가 없으면 계산하지 않음 (기본값 25 반환 로직 제거)
+    if (allSessions.isEmpty) return null;
 
-    final completedCount = recent.where((s) => s.completed).length;
-    final completionRate = completedCount / recent.length;
+    // 2. 현재 상황(Context) 파악: 시간대 (오전/오후/밤)
+    final now = DateTime.now();
+    final currentHour = now.hour;
 
-    final avgMinutes = recent
-        .map((s) => s.durationSec / 60)
-        .reduce((a, b) => a + b) / recent.length;
+    // 3. 맥락 필터링 (Contextual Filtering)
+    // 현재 시간대와 비슷한(앞뒤 3시간) 기록들을 추출하여 '이 시간대의 집중력'을 분석
+    final contextSessions = allSessions.where((s) {
+      final h = s.startedAt.hour;
+      return (h - currentHour).abs() <= 3; // ±3시간 이내 데이터
+    }).toList();
 
-    if (completionRate >= 0.8) {
-      return (avgMinutes + 5).round().clamp(15, 45);
-    } else if (completionRate >= 0.5) {
-      return avgMinutes.round().clamp(15, 45);
-    } else {
-      return (avgMinutes - 5).round().clamp(15, 45);
+    // * 데이터가 너무 적으면(5개 미만) 전체 최근 기록 20개를 대신 사용 (Cold Start 방지)
+    final targetSessions = contextSessions.length < 5
+        ? allSessions.reversed.take(20).toList()
+        : contextSessions;
+
+    if (targetSessions.isEmpty) return null;
+
+    double weightedSum = 0;
+    double totalWeight = 0;
+
+    // 4. 가중 이동 평균 (Weighted Moving Average) 계산
+    for (int i = 0; i < targetSessions.length; i++) {
+      final session = targetSessions[i];
+      final durationMin = session.durationSec / 60;
+
+      // A. 최신 데이터 가중치 (Time Decay): 최신일수록 가중치 높음
+      double recencyWeight = (i + 1) / targetSessions.length;
+
+      // B. 성과 가중치 (Performance Weight): 성공시 1.1배, 실패시 0.8배 반영
+      double outcomeWeight = session.completed ? 1.1 : 0.8;
+
+      final finalWeight = recencyWeight * outcomeWeight;
+
+      weightedSum += durationMin * finalWeight;
+      totalWeight += finalWeight;
     }
+
+    // 예측된 최적 시간
+    double predictedMinutes = weightedSum / totalWeight;
+
+    // 5. 스마트 보정 (Heuristic Adjustment)
+    // 최근 3번 중 2번 이상 실패했다면, 계산된 값보다 강제로 5분 더 줄여서 부담 완화
+    final recentFailures = targetSessions.reversed.take(3).where((s) => !s.completed).length;
+    if (recentFailures >= 2) {
+      predictedMinutes -= 5;
+    }
+
+    // 6. 최종 포맷팅 (5분 단위 반올림 & 범위 제한)
+    int result = (predictedMinutes / 5).round() * 5;
+    return result.clamp(15, 60); // 최소 15분, 최대 60분
   }
 }
