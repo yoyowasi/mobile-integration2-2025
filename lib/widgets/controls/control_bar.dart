@@ -4,7 +4,7 @@ class ControlBar extends StatelessWidget {
   final bool isRunning;
   final VoidCallback onToggle;
   final bool isAutoMode;
-  final bool canUseAutoMode;  // 🔥 추가!
+  final bool canUseAutoMode;
   final Function(bool) onModeChanged;
 
   const ControlBar({
@@ -12,7 +12,7 @@ class ControlBar extends StatelessWidget {
     required this.isRunning,
     required this.onToggle,
     required this.isAutoMode,
-    required this.canUseAutoMode,  // 🔥 추가!
+    required this.canUseAutoMode,
     required this.onModeChanged,
   });
 
@@ -55,7 +55,8 @@ class ControlBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withAlpha(26),
+                // ✅ [수정] withAlpha(26) -> withValues(alpha: 0.1)
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -68,7 +69,7 @@ class ControlBar extends StatelessWidget {
                 label: 'Custom',
                 icon: Icons.tune,
                 isSelected: !isAutoMode,
-                enabled: true,  // Custom은 항상 활성화
+                enabled: true,
                 onTap: () => onModeChanged(false),
               ),
               const SizedBox(width: 4),
@@ -76,10 +77,9 @@ class ControlBar extends StatelessWidget {
                 label: 'Auto',
                 icon: Icons.auto_awesome,
                 isSelected: isAutoMode,
-                enabled: canUseAutoMode,  // 🔥 조건부 활성화
-                onTap: canUseAutoMode
-                    ? () => onModeChanged(true)
-                    : null,  // 비활성화 시 null
+                enabled: canUseAutoMode, // 스타일은 비활성(회색) 유지
+                // ✅ [수정] 비활성 상태여도 클릭 이벤트는 항상 전달 (스낵바 띄우기 위해)
+                onTap: () => onModeChanged(true),
               ),
             ],
           ),
@@ -92,11 +92,12 @@ class ControlBar extends StatelessWidget {
     required String label,
     required IconData icon,
     required bool isSelected,
-    required bool enabled,  // 🔥 추가!
+    required bool enabled,
     VoidCallback? onTap,
   }) {
     return GestureDetector(
-      onTap: enabled ? onTap : null,  // 🔥 비활성화 처리
+      // ✅ [수정] enabled 여부와 상관없이 탭 감지
+      onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -105,7 +106,7 @@ class ControlBar extends StatelessWidget {
               ? const Color(0xFFE74D50)
               : enabled
               ? Colors.transparent
-              : Colors.grey.shade100,  // 🔥 비활성화 색상
+              : Colors.grey.shade100, // 비활성일 때 회색 배경
           borderRadius: BorderRadius.circular(26),
         ),
         child: Row(
@@ -117,7 +118,7 @@ class ControlBar extends StatelessWidget {
                   ? Colors.white
                   : enabled
                   ? Colors.black54
-                  : Colors.grey.shade400,  // 🔥 비활성화 색상
+                  : Colors.grey.shade400, // 비활성일 때 회색 아이콘
             ),
             const SizedBox(width: 6),
             Text(
@@ -127,7 +128,7 @@ class ControlBar extends StatelessWidget {
                     ? Colors.white
                     : enabled
                     ? Colors.black87
-                    : Colors.grey.shade400,  // 🔥 비활성화 색상
+                    : Colors.grey.shade400, // 비활성일 때 회색 텍스트
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                 fontSize: 14,
               ),

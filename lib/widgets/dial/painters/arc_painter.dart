@@ -20,25 +20,27 @@ class ArcPainter extends CustomPainter {
     final arcR = r * 0.72;
     final rect = Rect.fromCircle(center: c, radius: arcR);
 
-    // 🔥 60분 기준으로 계산! (눈금과 맞추기 위해)
     const maxMinutes = 60;
     final maxSeconds = maxMinutes * 60;
 
-    // 남은 시간을 60분 기준 비율로 계산
     final remainRatio = (remainSeconds / maxSeconds).clamp(0.0, 1.0);
 
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
 
-    final path = Path()..moveTo(c.dx, c.dy);
+    final path = Path(); // moveTo는 아래 로직에 따라 필요 없을 수 있음
 
-    // 비율이 0보다 클 때만 부채꼴을 그림
-    if (remainRatio > 0.0) {
-      const start = -math.pi / 2; // 12시 시작 (0분 위치)
-      final sweep = 2 * math.pi * remainRatio; // 60분 기준 남은 시간
+    // 🔥 [수정된 부분] 비율이 1.0(60분)이면 꽉 찬 원을 그림
+    if (remainRatio >= 1.0) {
+      path.addOval(rect); // 그냥 원을 추가
+    } else if (remainRatio > 0.0) {
+      // 1.0 미만일 때만 기존 부채꼴 로직 실행
+      path.moveTo(c.dx, c.dy); // 중심으로 이동
+      const start = -math.pi / 2;
+      final sweep = 2 * math.pi * remainRatio;
       path.arcTo(rect, start, sweep, false);
-      path.lineTo(c.dx, c.dy);
+      path.lineTo(c.dx, c.dy); // 중심으로 돌아옴
     }
 
     canvas.drawPath(path, paint);

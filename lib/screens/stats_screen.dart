@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:go_router/go_router.dart';
 import '../features/timer/data/session_store.dart';
 
 class StatsScreen extends StatefulWidget {
@@ -84,7 +85,7 @@ class _StatsScreenState extends State<StatsScreen> {
 
             const SizedBox(height: 16),
 
-            // 차트
+            // 차트 영역
             _buildChart(),
 
             const SizedBox(height: 24),
@@ -147,7 +148,7 @@ class _StatsScreenState extends State<StatsScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -187,7 +188,7 @@ class _StatsScreenState extends State<StatsScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -248,7 +249,7 @@ class _StatsScreenState extends State<StatsScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -276,13 +277,42 @@ class _StatsScreenState extends State<StatsScreen> {
 
   Widget _buildWeeklyChart() {
     final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final maxValue = _weeklyData.values.isEmpty ? 100.0 : _weeklyData.values.reduce((a, b) => a > b ? a : b);
+    final maxValue = _weeklyData.values.isEmpty
+        ? 100.0
+        : _weeklyData.values.reduce((a, b) => a > b ? a : b);
 
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
         maxY: maxValue * 1.2,
-        barTouchData: BarTouchData(enabled: false),
+        barTouchData: BarTouchData(
+          enabled: true,
+          touchTooltipData: BarTouchTooltipData(
+            // 🔥 [수정 완료] tooltipBgColor -> getTooltipColor
+            getTooltipColor: (group) => Colors.blueGrey,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              String weekDay = days[group.x.toInt()];
+              return BarTooltipItem(
+                '$weekDay\n',
+                const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+                children: <TextSpan>[
+                  TextSpan(
+                    text: '${rod.toY.round()}분',
+                    style: const TextStyle(
+                      color: Colors.yellowAccent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
         titlesData: FlTitlesData(
           show: true,
           bottomTitles: AxisTitles(
@@ -302,7 +332,20 @@ class _StatsScreenState extends State<StatsScreen> {
               },
             ),
           ),
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              interval: maxValue > 100 ? 60 : 30,
+              getTitlesWidget: (value, meta) {
+                if (value == 0) return const SizedBox.shrink();
+                return Text(
+                  '${value.toInt()}m',
+                  style: const TextStyle(color: Colors.black38, fontSize: 10),
+                );
+              },
+            ),
+          ),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
@@ -317,9 +360,16 @@ class _StatsScreenState extends State<StatsScreen> {
             barRods: [
               BarChartRodData(
                 toY: value,
-                color: const Color(0xFFE74D50),
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFFE74D50),
+                    Color(0xFFFF8A80),
+                  ],
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                ),
                 width: 20,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
               ),
             ],
           );
@@ -330,12 +380,7 @@ class _StatsScreenState extends State<StatsScreen> {
 
   Widget _buildDailyChart() {
     if (_dailyData.isEmpty) {
-      return const Center(
-        child: Text(
-          '데이터가 없습니다',
-          style: TextStyle(color: Colors.black54),
-        ),
-      );
+      return _buildEmptyState();
     }
 
     final sortedEntries = _dailyData.entries.toList()
@@ -347,19 +392,38 @@ class _StatsScreenState extends State<StatsScreen> {
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
         maxY: maxValue * 1.2,
-        barTouchData: BarTouchData(enabled: false),
+        barTouchData: BarTouchData(
+          enabled: true,
+          touchTooltipData: BarTouchTooltipData(
+            // 🔥 [수정 완료] tooltipBgColor -> getTooltipColor
+            getTooltipColor: (group) => Colors.blueGrey,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              return BarTooltipItem(
+                '${group.x + 1}일\n',
+                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                children: <TextSpan>[
+                  TextSpan(
+                    text: '${rod.toY.round()}분',
+                    style: const TextStyle(color: Colors.yellowAccent),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
         titlesData: FlTitlesData(
           show: true,
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
+              interval: 1,
               getTitlesWidget: (value, meta) {
                 final index = value.toInt();
-                if (index >= 0 && index < sortedEntries.length) {
+                if (index >= 0 && index < sortedEntries.length && index % 5 == 0) {
                   return Padding(
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Text(
-                      '${sortedEntries[index].key}',
+                      '${sortedEntries[index].key}일',
                       style: const TextStyle(fontSize: 10, color: Colors.black54),
                     ),
                   );
@@ -368,7 +432,20 @@ class _StatsScreenState extends State<StatsScreen> {
               },
             ),
           ),
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              interval: maxValue > 100 ? 60 : 30,
+              getTitlesWidget: (value, meta) {
+                if (value == 0) return const SizedBox.shrink();
+                return Text(
+                  '${value.toInt()}m',
+                  style: const TextStyle(color: Colors.black38, fontSize: 10),
+                );
+              },
+            ),
+          ),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
@@ -380,13 +457,42 @@ class _StatsScreenState extends State<StatsScreen> {
             barRods: [
               BarChartRodData(
                 toY: sortedEntries[index].value,
-                color: const Color(0xFFE74D50),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFE74D50), Color(0xFFFF8A80)],
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                ),
                 width: 16,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
               ),
             ],
           );
         }),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.bar_chart_rounded, size: 48, color: Colors.grey.shade300),
+          const SizedBox(height: 12),
+          const Text(
+            '아직 통계 데이터가 없어요',
+            style: TextStyle(color: Colors.black54),
+          ),
+          TextButton(
+            onPressed: () {
+              context.go('/'); // 타이머 화면으로 이동
+            },
+            child: const Text(
+              '지금 집중하러 가기',
+              style: TextStyle(color: Color(0xFFE74D50), fontWeight: FontWeight.bold),
+            ),
+          )
+        ],
       ),
     );
   }
@@ -400,7 +506,7 @@ class _StatsScreenState extends State<StatsScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -431,7 +537,7 @@ class _StatsScreenState extends State<StatsScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -465,7 +571,7 @@ class _StatsScreenState extends State<StatsScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE74D50).withOpacity(0.1),
+                      color: const Color(0xFFE74D50).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
