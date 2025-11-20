@@ -81,7 +81,7 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'AI가 15분 ~ 60분 범위에서 최적 시간을 추천합니다',
+                        'AI가 10분 ~ 60분 범위에서\n최적 시간을 추천합니다',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.blue.shade700,
