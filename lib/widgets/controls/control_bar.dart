@@ -20,7 +20,7 @@ class ControlBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // 시작/일시정지 버튼
+        // 시작/중단 버튼 (수정)
         ElevatedButton(
           onPressed: onToggle,
           style: ElevatedButton.styleFrom(
@@ -35,10 +35,10 @@ class ControlBar extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(isRunning ? Icons.pause : Icons.play_arrow, size: 28),
+              Icon(isRunning ? Icons.stop : Icons.play_arrow, size: 28), // 🔥 pause → stop
               const SizedBox(width: 8),
               Text(
-                isRunning ? '일시정지' : '시작',
+                isRunning ? '중단' : '시작', // 🔥 일시정지 → 중단
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ],
@@ -55,7 +55,6 @@ class ControlBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
               BoxShadow(
-                // ✅ [수정] withAlpha(26) -> withValues(alpha: 0.1)
                 color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
@@ -77,8 +76,7 @@ class ControlBar extends StatelessWidget {
                 label: 'Auto',
                 icon: Icons.auto_awesome,
                 isSelected: isAutoMode,
-                enabled: canUseAutoMode, // 스타일은 비활성(회색) 유지
-                // ✅ [수정] 비활성 상태여도 클릭 이벤트는 항상 전달 (스낵바 띄우기 위해)
+                enabled: canUseAutoMode,
                 onTap: () => onModeChanged(true),
               ),
             ],
@@ -96,7 +94,6 @@ class ControlBar extends StatelessWidget {
     VoidCallback? onTap,
   }) {
     return GestureDetector(
-      // ✅ [수정] enabled 여부와 상관없이 탭 감지
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
@@ -106,7 +103,7 @@ class ControlBar extends StatelessWidget {
               ? const Color(0xFFE74D50)
               : enabled
               ? Colors.transparent
-              : Colors.grey.shade100, // 비활성일 때 회색 배경
+              : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(26),
         ),
         child: Row(
@@ -118,7 +115,7 @@ class ControlBar extends StatelessWidget {
                   ? Colors.white
                   : enabled
                   ? Colors.black54
-                  : Colors.grey.shade400, // 비활성일 때 회색 아이콘
+                  : Colors.grey.shade400,
             ),
             const SizedBox(width: 6),
             Text(
@@ -128,7 +125,7 @@ class ControlBar extends StatelessWidget {
                     ? Colors.white
                     : enabled
                     ? Colors.black87
-                    : Colors.grey.shade400, // 비활성일 때 회색 텍스트
+                    : Colors.grey.shade400,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                 fontSize: 14,
               ),

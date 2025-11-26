@@ -1,107 +1,93 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:go_router/go_router.dart';
 import '../features/timer/data/session_store.dart';
+import '../providers/session_provider.dart';
 
-class StatsScreen extends StatefulWidget {
+class StatsScreen extends ConsumerStatefulWidget {
   const StatsScreen({super.key});
 
   @override
-  State<StatsScreen> createState() => _StatsScreenState();
+  ConsumerState<StatsScreen> createState() => _StatsScreenState();
 }
 
-class _StatsScreenState extends State<StatsScreen> {
+class _StatsScreenState extends ConsumerState<StatsScreen> {
   final SessionStore _sessionStore = SessionStore();
-
-  bool _isWeekly = true; // true: 주간, false: 일별
-  Map<String, double> _weeklyData = {};
-  Map<int, double> _dailyData = {};
-  Map<String, dynamic> _totalStats = {};
-  List<Map<String, dynamic>> _topReasons = [];
-
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-
-    final weekly = await _sessionStore.getWeeklyData();
-    final daily = await _sessionStore.getDailyData();
-    final stats = await _sessionStore.getTotalStats();
-    final reasons = await _sessionStore.getTopQuitReasons();
-
-    if (!mounted) return;
-    setState(() {
-      _weeklyData = weekly;
-      _dailyData = daily;
-      _totalStats = stats;
-      _topReasons = reasons;
-      _isLoading = false;
-    });
-  }
+  bool _isWeekly = true; // true: 주간, false: 오늘 시간대별
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
+    final sessionsAsync = ref.watch(sessionListProvider);
+
+    return sessionsAsync.when(
+      loading: () => const Scaffold(
         backgroundColor: Color(0xFFF7F8FA),
         body: Center(child: CircularProgressIndicator(color: Color(0xFFE74D50))),
-      );
-    }
+      ),
+      error: (err, stack) => Scaffold(
+        backgroundColor: const Color(0xFFF7F8FA),
+        body: Center(child: Text('오류 발생: $err')),
+      ),
+      data: (sessions) {
+        // 🔥 Provider 데이터로 즉시 계산
+        final weeklyData = _sessionStore.calculateWeeklyData(sessions);
+        // 🔥 [수정] 일별 -> 오늘 시간대별 데이터 (0시~23시)
+        final hourlyData = _sessionStore.calculateHourlyData(sessions);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(
-          '통계',
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.bold,
+        final totalStats = _sessionStore.calculateTotalStats(sessions);
+        final topReasons = _sessionStore.calculateTopQuitReasons(sessions);
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFF7F8FA),
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: const Text(
+              '통계',
+              style: TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            centerTitle: true,
+            automaticallyImplyLeading: false,
           ),
-        ),
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-      ),
-      body: RefreshIndicator(
-        color: const Color(0xFFE74D50),
-        onRefresh: _loadData,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            // 요약 카드
-            _buildSummaryCards(),
+          body: RefreshIndicator(
+            color: const Color(0xFFE74D50),
+            onRefresh: () => ref.refresh(sessionListProvider.future),
+            child: ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                // 요약 카드
+                _buildSummaryCards(totalStats),
 
-            const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-            // 차트 토글
-            _buildChartToggle(),
+                // 차트 토글
+                _buildChartToggle(),
 
-            const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-            // 차트 영역
-            _buildChart(),
+                // 차트 영역
+                _buildChart(weeklyData, hourlyData),
 
-            const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-            // 중단 원인 TOP 3
-            _buildQuitReasons(),
-          ],
-        ),
-      ),
+                // 중단 원인 TOP 3
+                _buildQuitReasons(topReasons),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildSummaryCards() {
-    final totalMinutes = _totalStats['totalMinutes'] ?? 0;
-    final completedCount = _totalStats['completedCount'] ?? 0;
-    final completionRate = (_totalStats['completionRate'] ?? 0.0) * 100;
+  Widget _buildSummaryCards(Map<String, dynamic> totalStats) {
+    final totalMinutes = totalStats['totalMinutes'] ?? 0;
+    final completedCount = totalStats['completedCount'] ?? 0;
+    final completionRate = (totalStats['completionRate'] ?? 0.0) * 100;
 
     return Row(
       children: [
@@ -226,7 +212,7 @@ class _StatsScreenState extends State<StatsScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  '일별',
+                  '일별', // 텍스트 변경
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: !_isWeekly ? Colors.white : Colors.black54,
@@ -241,7 +227,8 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildChart() {
+  // 🔥 [수정] 두 번째 인자를 Map<int, double> (시간대별 데이터)로 변경
+  Widget _buildChart(Map<String, double> weeklyData, Map<int, double> hourlyData) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -259,7 +246,7 @@ class _StatsScreenState extends State<StatsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _isWeekly ? '주간 집중 시간' : '일별 집중 시간',
+            _isWeekly ? '이번 주 집중 시간' : '오늘 시간대별 집중', // 타이틀 변경
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -268,27 +255,26 @@ class _StatsScreenState extends State<StatsScreen> {
           const SizedBox(height: 20),
           SizedBox(
             height: 200,
-            child: _isWeekly ? _buildWeeklyChart() : _buildDailyChart(),
+            child: _isWeekly ? _buildWeeklyChart(weeklyData) : _buildHourlyChart(hourlyData),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildWeeklyChart() {
+  Widget _buildWeeklyChart(Map<String, double> weeklyData) {
     final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final maxValue = _weeklyData.values.isEmpty
+    final maxValue = weeklyData.values.isEmpty
         ? 100.0
-        : _weeklyData.values.reduce((a, b) => a > b ? a : b);
+        : weeklyData.values.reduce((a, b) => a > b ? a : b);
 
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
-        maxY: maxValue * 1.2,
+        maxY: maxValue == 0 ? 60 : maxValue * 1.2,
         barTouchData: BarTouchData(
           enabled: true,
           touchTooltipData: BarTouchTooltipData(
-            // 🔥 [수정 완료] tooltipBgColor -> getTooltipColor
             getTooltipColor: (group) => Colors.blueGrey,
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               String weekDay = days[group.x.toInt()];
@@ -332,20 +318,7 @@ class _StatsScreenState extends State<StatsScreen> {
               },
             ),
           ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 40,
-              interval: maxValue > 100 ? 60 : 30,
-              getTitlesWidget: (value, meta) {
-                if (value == 0) return const SizedBox.shrink();
-                return Text(
-                  '${value.toInt()}m',
-                  style: const TextStyle(color: Colors.black38, fontSize: 10),
-                );
-              },
-            ),
-          ),
+          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
@@ -353,7 +326,7 @@ class _StatsScreenState extends State<StatsScreen> {
         borderData: FlBorderData(show: false),
         barGroups: List.generate(days.length, (index) {
           final day = days[index];
-          final value = _weeklyData[day] ?? 0;
+          final value = weeklyData[day] ?? 0;
 
           return BarChartGroupData(
             x: index,
@@ -378,28 +351,26 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildDailyChart() {
-    if (_dailyData.isEmpty) {
+  // 🔥 [추가] 시간대별(0~23시) 차트 메서드
+  Widget _buildHourlyChart(Map<int, double> hourlyData) {
+    // 데이터가 하나도 없으면 빈 화면 표시
+    if (hourlyData.values.every((v) => v == 0)) {
       return _buildEmptyState();
     }
 
-    final sortedEntries = _dailyData.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
-
-    final maxValue = sortedEntries.map((e) => e.value).reduce((a, b) => a > b ? a : b);
+    final maxValue = hourlyData.values.reduce((a, b) => a > b ? a : b);
 
     return BarChart(
       BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: maxValue * 1.2,
+        alignment: BarChartAlignment.center, // 막대 간격 균등 배치
+        maxY: maxValue == 0 ? 60 : maxValue * 1.2,
         barTouchData: BarTouchData(
           enabled: true,
           touchTooltipData: BarTouchTooltipData(
-            // 🔥 [수정 완료] tooltipBgColor -> getTooltipColor
             getTooltipColor: (group) => Colors.blueGrey,
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               return BarTooltipItem(
-                '${group.x + 1}일\n',
+                '${group.x}시\n',
                 const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 children: <TextSpan>[
                   TextSpan(
@@ -416,14 +387,14 @@ class _StatsScreenState extends State<StatsScreen> {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              interval: 1,
+              interval: 6, // 0, 6, 12, 18 (6시간 간격 표시)
               getTitlesWidget: (value, meta) {
-                final index = value.toInt();
-                if (index >= 0 && index < sortedEntries.length && index % 5 == 0) {
+                final hour = value.toInt();
+                if (hour % 6 == 0 && hour <= 23) {
                   return Padding(
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Text(
-                      '${sortedEntries[index].key}일',
+                      '$hour시',
                       style: const TextStyle(fontSize: 10, color: Colors.black54),
                     ),
                   );
@@ -432,38 +403,22 @@ class _StatsScreenState extends State<StatsScreen> {
               },
             ),
           ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 40,
-              interval: maxValue > 100 ? 60 : 30,
-              getTitlesWidget: (value, meta) {
-                if (value == 0) return const SizedBox.shrink();
-                return Text(
-                  '${value.toInt()}m',
-                  style: const TextStyle(color: Colors.black38, fontSize: 10),
-                );
-              },
-            ),
-          ),
+          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
         gridData: const FlGridData(show: false),
         borderData: FlBorderData(show: false),
-        barGroups: List.generate(sortedEntries.length, (index) {
+        // 0시부터 23시까지 24개 막대 생성
+        barGroups: List.generate(24, (index) {
           return BarChartGroupData(
             x: index,
             barRods: [
               BarChartRodData(
-                toY: sortedEntries[index].value,
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFE74D50), Color(0xFFFF8A80)],
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                ),
-                width: 16,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                toY: hourlyData[index] ?? 0,
+                color: const Color(0xFFE74D50),
+                width: 8, // 막대 개수가 많으므로 얇게 조정
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
               ),
             ],
           );
@@ -480,7 +435,7 @@ class _StatsScreenState extends State<StatsScreen> {
           Icon(Icons.bar_chart_rounded, size: 48, color: Colors.grey.shade300),
           const SizedBox(height: 12),
           const Text(
-            '아직 통계 데이터가 없어요',
+            '오늘 집중 기록이 없어요',
             style: TextStyle(color: Colors.black54),
           ),
           TextButton(
@@ -497,8 +452,8 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildQuitReasons() {
-    if (_topReasons.isEmpty) {
+  Widget _buildQuitReasons(List<Map<String, dynamic>> topReasons) {
+    if (topReasons.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -554,7 +509,7 @@ class _StatsScreenState extends State<StatsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          ..._topReasons.map((reason) {
+          ...topReasons.map((reason) {
             final label = reasonLabels[reason['reason']] ?? '❓ 알 수 없음';
             final count = reason['count'];
 

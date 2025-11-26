@@ -1,58 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // Riverpod 추가
 import 'package:intl/intl.dart';
-import '../features/timer/data/session_store.dart';
 import '../features/timer/data/session_model.dart';
+import '../providers/session_provider.dart'; // Provider 추가
 
-class HistoryScreen extends StatefulWidget {
+class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
 
   @override
-  State<HistoryScreen> createState() => _HistoryScreenState();
+  ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> {
-  final SessionStore _sessionStore = SessionStore();
-  List<SessionModel> _sessions = [];
-  bool _isLoading = true;
+class _HistoryScreenState extends ConsumerState<HistoryScreen> {
+  // 🔥 로딩 상태나 세션 리스트 변수 제거 (Provider가 관리)
 
   @override
   void initState() {
     super.initState();
-    _loadSessions();
-  }
-
-  Future<void> _loadSessions() async {
-    setState(() => _isLoading = true);
-
-    final sessions = await _sessionStore.getAll();
-
-    if (!mounted) return;
-
-    // [수정됨] 단순히 뒤집는 대신, 시작 시간(startedAt)을 기준으로 내림차순(최신순) 정렬합니다.
-    // b.compareTo(a)를 사용하면 최신 날짜가 앞으로 옵니다.
-    sessions.sort((a, b) => b.startedAt.compareTo(a.startedAt));
-
-    setState(() {
-      _sessions = sessions;
-      _isLoading = false;
-    });
+    // 초기 데이터 로드는 Provider가 자동으로 수행하므로 별도 호출 필요 없음
   }
 
   Future<void> _deleteSession(SessionModel session) async {
-    final allSessions = await _sessionStore.getAll();
-    allSessions.removeWhere((s) =>
-    s.startedAt == session.startedAt &&
-        s.endedAt == session.endedAt
-    );
-
-    // SharedPreferences에 다시 저장
-    // 불필요한 변수 할당을 제거하고 로직을 유지합니다.
-    await _sessionStore.clear();
-    for (var s in allSessions) {
-      await _sessionStore.append(s);
-    }
-
-    _loadSessions();
+    // 🔥 Provider를 통해 삭제 요청
+    await ref.read(sessionListProvider.notifier).deleteSession(session);
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -66,125 +36,133 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
+    // 🔥 Provider 구독: 데이터가 변경되면 build가 다시 실행됨
+    final sessionsAsync = ref.watch(sessionListProvider);
+
+    return sessionsAsync.when(
+      loading: () => const Scaffold(
         backgroundColor: Color(0xFFF7F8FA),
         body: Center(
           child: CircularProgressIndicator(color: Color(0xFFE74D50)),
         ),
-      );
-    }
-
-    if (_sessions.isEmpty) {
-      return Scaffold(
+      ),
+      error: (err, stack) => Scaffold(
         backgroundColor: const Color(0xFFF7F8FA),
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          title: const Text(
-            '기록',
-            style: TextStyle(
-              color: Colors.black87,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          centerTitle: true,
-          automaticallyImplyLeading: false,
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.history_rounded,
-                size: 80,
-                color: Colors.black26,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                '세션 기록이 없습니다',
+        body: Center(child: Text('오류가 발생했습니다: $err')),
+      ),
+      data: (sessions) {
+        if (sessions.isEmpty) {
+          return Scaffold(
+            backgroundColor: const Color(0xFFF7F8FA),
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              title: const Text(
+                '기록',
                 style: TextStyle(
-                  fontSize: 20,
+                  color: Colors.black87,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black54,
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                '타이머를 시작해보세요!',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.black38,
+              centerTitle: true,
+              automaticallyImplyLeading: false,
+            ),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.history_rounded,
+                    size: 80,
+                    color: Colors.black26,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    '세션 기록이 없습니다',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '타이머를 시작해보세요!',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black38,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFF7F8FA),
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: const Text(
+              '기록',
+              style: TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            centerTitle: true,
+            automaticallyImplyLeading: false,
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '총 ${sessions.length}개',
+                      style: TextStyle(
+                        color: Colors.blue.shade700,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-      );
-    }
+          body: RefreshIndicator(
+            color: const Color(0xFFE74D50),
+            onRefresh: () => ref.refresh(sessionListProvider.future),
+            child: ListView.builder(
+              padding: const EdgeInsets.all(20),
+              itemCount: sessions.length,
+              itemBuilder: (context, index) {
+                final session = sessions[index];
+                final isFirst = index == 0;
+                final isNewDay = isFirst ||
+                    !_isSameDay(session.startedAt, sessions[index - 1].startedAt);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(
-          '기록',
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '총 ${_sessions.length}개',
-                  style: TextStyle(
-                    color: Colors.blue.shade700,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isNewDay) _buildDateHeader(session.startedAt),
+                    _buildSessionCard(session),
+                  ],
+                );
+              },
             ),
           ),
-        ],
-      ),
-      body: RefreshIndicator(
-        color: const Color(0xFFE74D50),
-        onRefresh: _loadSessions,
-        child: ListView.builder(
-          padding: const EdgeInsets.all(20),
-          itemCount: _sessions.length,
-          itemBuilder: (context, index) {
-            final session = _sessions[index];
-            final isFirst = index == 0;
-            final isNewDay = isFirst ||
-                !_isSameDay(session.startedAt, _sessions[index - 1].startedAt);
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (isNewDay) _buildDateHeader(session.startedAt),
-                _buildSessionCard(session),
-              ],
-            );
-          },
-        ),
-      ),
+        );
+      },
     );
   }
 
