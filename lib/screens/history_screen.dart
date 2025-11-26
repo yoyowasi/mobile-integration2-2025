@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // Riverpod 추가
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../features/timer/data/session_model.dart';
-import '../providers/session_provider.dart'; // Provider 추가
+import '../providers/session_provider.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
@@ -12,16 +12,9 @@ class HistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
-  // 🔥 로딩 상태나 세션 리스트 변수 제거 (Provider가 관리)
-
-  @override
-  void initState() {
-    super.initState();
-    // 초기 데이터 로드는 Provider가 자동으로 수행하므로 별도 호출 필요 없음
-  }
 
   Future<void> _deleteSession(SessionModel session) async {
-    // 🔥 Provider를 통해 삭제 요청
+    // Provider를 통해 삭제 요청
     await ref.read(sessionListProvider.notifier).deleteSession(session);
 
     if (!mounted) return;
@@ -36,7 +29,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 Provider 구독: 데이터가 변경되면 build가 다시 실행됨
     final sessionsAsync = ref.watch(sessionListProvider);
 
     return sessionsAsync.when(
@@ -225,31 +217,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           size: 28,
         ),
       ),
-      confirmDismiss: (direction) async {
-        return await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            title: const Text('세션 삭제'),
-            content: const Text('이 세션을 삭제하시겠습니까?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('취소'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text(
-                  '삭제',
-                  style: TextStyle(color: Colors.red),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+      // 🔥 confirmDismiss 제거: 스와이프하면 즉시 삭제됨
       onDismissed: (direction) => _deleteSession(session),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
