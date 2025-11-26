@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/notify_service.dart';
 import '../features/timer/data/session_store.dart';
 import '../features/timer/data/session_model.dart';
+import '../providers/session_provider.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/controls/control_bar.dart';
 import '../widgets/dialogs/quick_log_dialog.dart';
@@ -110,7 +111,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
       completed: completed,
       quitReason: quitReason,
     );
-    await _sessionStore.append(session);
+
+    // 🔥 [수정됨] 직접 저장하는 대신 Provider를 통해 저장 (자동 갱신 트리거)
+    await ref.read(sessionListProvider.notifier).addSession(session);
 
     if (completed) {
       // 🔥 [수정] null 반환 가능성 처리
