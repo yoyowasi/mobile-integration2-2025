@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../features/timer/data/session_store.dart';
 import '../features/timer/data/session_model.dart';
+import '../providers/session_provider.dart';
 import '../providers/settings_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -31,7 +31,7 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           // 타이머 설정 섹션
           const Text(
-            '타이머 설정',
+            '⏱️ 타이머 설정',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -98,7 +98,7 @@ class SettingsScreen extends ConsumerWidget {
 
           // 데이터 관리 섹션
           const Text(
-            '데이터 관리',
+            '🗄️ 데이터 관리',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -107,13 +107,13 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
 
-          // 테스트 데이터 생성 버튼
+          // 🔥 [수정] 테스트 데이터 생성 (ref 전달)
           _buildActionCard(
             title: '테스트 데이터 생성',
             subtitle: '통계 확인용 샘플 데이터 20개',
             icon: Icons.science,
             color: Colors.purple,
-            onTap: () => _generateTestData(context),
+            onTap: () => _generateTestData(context, ref),
           ),
 
           const SizedBox(height: 12),
@@ -128,12 +128,13 @@ class SettingsScreen extends ConsumerWidget {
 
           const SizedBox(height: 12),
 
+          // 🔥 [수정] 삭제 버튼 (ref 전달)
           _buildActionCard(
             title: '세션 기록 삭제',
             subtitle: '저장된 모든 세션 데이터 삭제',
             icon: Icons.delete_forever_rounded,
             color: Colors.red,
-            onTap: () => _showClearDataDialog(context),
+            onTap: () => _showClearDataDialog(context, ref),
           ),
 
           const SizedBox(height: 32),
@@ -145,10 +146,8 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  // 테스트 데이터 생성 메서드
-  Future<void> _generateTestData(BuildContext context) async {
-    final store = SessionStore();
-
+  // 🔥 [수정됨] Provider를 통해 데이터를 추가하도록 변경
+  Future<void> _generateTestData(BuildContext context, WidgetRef ref) async {
     // 최근 7일간 랜덤 데이터 생성
     for (int i = 0; i < 20; i++) {
       final daysAgo = (i / 3).floor();
@@ -158,24 +157,65 @@ class SettingsScreen extends ConsumerWidget {
       final duration = [15, 20, 25, 30][i % 4];
       final completed = i % 3 != 0; // 66% 완료율
 
-      await store.append(SessionModel(
+      final session = SessionModel(
         startedAt: startTime,
         endedAt: startTime.add(Duration(minutes: duration)),
         durationSec: duration * 60,
         mode: i % 2 == 0 ? 'custom' : 'auto',
         completed: completed,
         quitReason: completed ? null : ['phone', 'tired', 'hungry', 'distracted'][i % 4],
-      ));
+      );
+
+      // 🚨 Provider에 알림! (이 줄 덕분에 다른 화면이 갱신됨)
+      await ref.read(sessionListProvider.notifier).addSession(session);
     }
 
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('테스트 데이터 20개 생성 완료!'),
-        behavior: SnackBarBehavior.floating,
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ 테스트 데이터 20개 생성 완료!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  // 🔥 [수정됨] Provider를 통해 전체 삭제하도록 변경
+  void _showClearDataDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('세션 기록 삭제'),
+        content: const Text('저장된 모든 세션 데이터가 삭제됩니다.\n이 작업은 되돌릴 수 없습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () async {
+              // 🚨 Provider에 알림! (전체 삭제 및 화면 갱신)
+              await ref.read(sessionListProvider.notifier).clearAll();
+
+              if (context.mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('✅ 모든 기록이 삭제되었습니다'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            child: const Text('삭제', style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }
+
+  // ... 기존 UI 컴포넌트들 (변화 없음) ...
 
   Widget _buildTimerSetting({
     required BuildContext context,
@@ -194,7 +234,7 @@ class SettingsScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(13),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -234,7 +274,7 @@ class SettingsScreen extends ConsumerWidget {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE74D50).withAlpha(26),
+                  color: const Color(0xFFE74D50).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -295,7 +335,7 @@ class SettingsScreen extends ConsumerWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withAlpha(13),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -306,7 +346,7 @@ class SettingsScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: color.withAlpha(26),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 24),
@@ -350,7 +390,7 @@ class SettingsScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(13),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -411,42 +451,12 @@ class SettingsScreen extends ConsumerWidget {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('설정이 초기화되었습니다'),
+                  content: Text('✅ 설정이 초기화되었습니다'),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
             },
             child: const Text('초기화', style: TextStyle(color: Colors.orange)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showClearDataDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('세션 기록 삭제'),
-        content: const Text('저장된 모든 세션 데이터가 삭제됩니다.\n이 작업은 되돌릴 수 없습니다.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () async {
-              await SessionStore().clear();
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('모든 기록이 삭제되었습니다'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            child: const Text('삭제', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
