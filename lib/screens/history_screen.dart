@@ -20,7 +20,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('✅ 세션이 삭제되었습니다'),
+        content: Text('세션이 삭제되었습니다'),
         behavior: SnackBarBehavior.floating,
         duration: Duration(seconds: 2),
       ),
@@ -192,12 +192,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final endTime = DateFormat('HH:mm').format(session.endedAt);
 
     final reasonLabels = {
-      'phone': '📱 스마트폰',
-      'tired': '😴 피곤함',
-      'hungry': '🍽️ 배고픔',
-      'distracted': '🤔 집중력 저하',
-      'urgent': '🚶 급한 일',
-      'other': '📝 기타',
+      'phone': '스마트폰',
+      'tired': '피곤함',
+      'hungry': '배고픔',
+      'distracted': '집중력 저하',
+      'urgent': '급한 일',
+      'other': '기타',
     };
 
     return Dismissible(
@@ -217,7 +217,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           size: 28,
         ),
       ),
-      // 🔥 confirmDismiss 제거: 스와이프하면 즉시 삭제됨
       onDismissed: (direction) => _deleteSession(session),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -307,7 +306,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        reasonLabels[session.quitReason] ?? '❓ 알 수 없음',
+                        reasonLabels[session.quitReason] ?? '알 수 없음',
                         style: const TextStyle(
                           fontSize: 12,
                           color: Colors.black38,

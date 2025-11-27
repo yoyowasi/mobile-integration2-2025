@@ -35,7 +35,7 @@ class SessionStore {
   }
 
   // ===============================================================
-  // 🔥 통계용 메서드 (비동기 - 기존 코드 호환용)
+  // 통계용 메서드 (비동기 - 기존 코드 호환용)
   // ===============================================================
 
   Future<Map<String, double>> getWeeklyData() async {
@@ -59,7 +59,7 @@ class SessionStore {
   }
 
   // ===============================================================
-  // 📊 통계 계산 알고리즘 (동기 메서드 - Provider에서 사용)
+  // 통계 계산 알고리즘 (동기 메서드 - Provider에서 사용)
   // ===============================================================
 
   /// 1. 주간 데이터 (이번 주 월요일 ~ 오늘)
@@ -107,7 +107,7 @@ class SessionStore {
     return dayData;
   }
 
-  /// 🔥 3. 시간대별 데이터 (오늘 0시 ~ 23시) - [이 부분이 누락되었었습니다]
+  /// 3. 시간대별 데이터 (오늘 0시 ~ 23시) - [이 부분이 누락되었었습니다]
   Map<int, double> calculateHourlyData(List<SessionModel> allSessions) {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);

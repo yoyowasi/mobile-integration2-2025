@@ -31,7 +31,7 @@ class NotificationService {
       },
     );
 
-    // 🔥 Android 13+ 권한 요청
+    // Android 13+ 권한 요청
     await _requestPermissions();
   }
 
@@ -72,7 +72,7 @@ class NotificationService {
 
     await _notifications.show(
       0,
-      '🎉 집중 완료!',
+      '집중 완료!',
       '$minutes분 집중을 완료했습니다. 잠시 휴식을 취하세요.',
       details,
     );
@@ -102,7 +102,7 @@ class NotificationService {
   //
   //   await _notifications.show(
   //     1,
-  //     '☕ 휴식 시간',
+  //     '휴식 시간',
   //     '5분간 휴식하세요!',
   //     details,
   //   );

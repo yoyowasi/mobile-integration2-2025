@@ -35,10 +35,10 @@ class ControlBar extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(isRunning ? Icons.stop : Icons.play_arrow, size: 28), // 🔥 pause → stop
+              Icon(isRunning ? Icons.stop : Icons.play_arrow, size: 28), // pause → stop
               const SizedBox(width: 8),
               Text(
-                isRunning ? '중단' : '시작', // 🔥 일시정지 → 중단
+                isRunning ? '중단' : '시작', // 일시정지 → 중단
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ],

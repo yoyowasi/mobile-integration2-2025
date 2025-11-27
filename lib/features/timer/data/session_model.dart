@@ -4,7 +4,7 @@ class SessionModel {
   final int durationSec;
   final String mode;
   final bool completed;
-  final String? quitReason;  // 🔥 Quick Log용
+  final String? quitReason;  // Quick Log용
 
   SessionModel({
     required this.startedAt,

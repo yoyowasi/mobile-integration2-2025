@@ -34,7 +34,7 @@ class PomodoroDial extends StatelessWidget {
 
     final List<Widget> children = [];
 
-    // 🔥 눈금 레이어 (showTicks가 true일 때만)
+    // 눈금 레이어 (showTicks가 true일 때만)
     if (showTicks) {
       children.add(
         CustomPaint(
@@ -44,7 +44,7 @@ class PomodoroDial extends StatelessWidget {
       );
     }
 
-    // 🔥 숫자 레이어 (showNumbers가 true일 때만)
+    // 숫자 레이어 (showNumbers가 true일 때만)
     if (showNumbers) {
       children.add(
         CustomPaint(
