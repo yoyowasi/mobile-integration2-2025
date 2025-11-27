@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/timer/data/session_store.dart';
 import '../features/timer/data/session_model.dart';
-import '../providers/settings_provider.dart';  // 🔥 추가
+import '../providers/settings_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -31,7 +31,7 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           // 타이머 설정 섹션
           const Text(
-            '⏱️ 타이머 설정',
+            '타이머 설정',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -98,7 +98,7 @@ class SettingsScreen extends ConsumerWidget {
 
           // 데이터 관리 섹션
           const Text(
-            '🗄️ 데이터 관리',
+            '데이터 관리',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -107,7 +107,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
 
-          // 🔥 테스트 데이터 생성 버튼
+          // 테스트 데이터 생성 버튼
           _buildActionCard(
             title: '테스트 데이터 생성',
             subtitle: '통계 확인용 샘플 데이터 20개',
@@ -145,7 +145,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  // 🔥 테스트 데이터 생성 메서드
+  // 테스트 데이터 생성 메서드
   Future<void> _generateTestData(BuildContext context) async {
     final store = SessionStore();
 
@@ -171,7 +171,7 @@ class SettingsScreen extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('✅ 테스트 데이터 20개 생성 완료!'),
+        content: Text('테스트 데이터 20개 생성 완료!'),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -411,7 +411,7 @@ class SettingsScreen extends ConsumerWidget {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('✅ 설정이 초기화되었습니다'),
+                  content: Text('설정이 초기화되었습니다'),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -441,7 +441,7 @@ class SettingsScreen extends ConsumerWidget {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('✅ 모든 기록이 삭제되었습니다'),
+                  content: Text('모든 기록이 삭제되었습니다'),
                   behavior: SnackBarBehavior.floating,
                 ),
               );

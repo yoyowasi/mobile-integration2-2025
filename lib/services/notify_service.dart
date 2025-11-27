@@ -73,7 +73,7 @@ class NotificationService {
 
     await _notifications.show(
       0,
-      '🎉 타이머 완료!',
+      '타이머 완료!',
       '$minutes분 ${mode == 'auto' ? '오토' : '커스텀'} 세션이 끝났습니다.',
       details,
     );

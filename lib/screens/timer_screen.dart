@@ -44,7 +44,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
 
   Future<void> _loadAutoFromHistory() async {
     final sessions = await _sessionStore.getRecentSessions(limit: 10);
-    // 🔥 [수정] null 반환 가능성 처리
+    // [수정] null 반환 가능성 처리
     final optimal = await _sessionStore.calculateOptimalMinutes();
 
     if (!mounted) return;
@@ -71,7 +71,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
         _finishSession(completed: true);
         _resetState();
 
-        // 🔥 알림 표시
+        // 알림 표시
         NotificationService().showCompletionNotification(
           minutes: _currentTotalMinutes,
           mode: _mode,
@@ -112,11 +112,11 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
       quitReason: quitReason,
     );
 
-    // 🔥 [수정됨] 직접 저장하는 대신 Provider를 통해 저장 (자동 갱신 트리거)
+    // [수정됨] 직접 저장하는 대신 Provider를 통해 저장 (자동 갱신 트리거)
     await ref.read(sessionListProvider.notifier).addSession(session);
 
     if (completed) {
-      // 🔥 [수정] null 반환 가능성 처리
+      // [수정] null 반환 가능성 처리
       final optimal = await _sessionStore.calculateOptimalMinutes();
       if (!mounted) return;
       setState(() {
@@ -138,7 +138,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
   }
 
   void _handleModeChange(bool isAuto) {
-    print('🔄 모드 변경: ${isAuto ? "Auto" : "Custom"}, 세션: $_sessionCount, 가능: $_canUseAutoMode');
+    print('모드 변경: ${isAuto ? "Auto" : "Custom"}, 세션: $_sessionCount, 가능: $_canUseAutoMode');
 
     if (isAuto && !_canUseAutoMode) {
       ScaffoldMessenger.of(context).showSnackBar(

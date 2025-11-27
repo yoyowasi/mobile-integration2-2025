@@ -30,9 +30,9 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
         body: Center(child: Text('오류 발생: $err')),
       ),
       data: (sessions) {
-        // 🔥 Provider 데이터로 즉시 계산
+        // Provider 데이터로 즉시 계산
         final weeklyData = _sessionStore.calculateWeeklyData(sessions);
-        // 🔥 [수정] 일별 -> 오늘 시간대별 데이터 (0시~23시)
+        // [수정] 일별 -> 오늘 시간대별 데이터 (0시~23시)
         final hourlyData = _sessionStore.calculateHourlyData(sessions);
 
         final totalStats = _sessionStore.calculateTotalStats(sessions);
@@ -227,7 +227,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     );
   }
 
-  // 🔥 [수정] 두 번째 인자를 Map<int, double> (시간대별 데이터)로 변경
+  // [수정] 두 번째 인자를 Map<int, double> (시간대별 데이터)로 변경
   Widget _buildChart(Map<String, double> weeklyData, Map<int, double> hourlyData) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -351,7 +351,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     );
   }
 
-  // 🔥 [추가] 시간대별(0~23시) 차트 메서드
+  // [추가] 시간대별(0~23시) 차트 메서드
   Widget _buildHourlyChart(Map<int, double> hourlyData) {
     // 데이터가 하나도 없으면 빈 화면 표시
     if (hourlyData.values.every((v) => v == 0)) {
@@ -510,7 +510,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
           ),
           const SizedBox(height: 16),
           ...topReasons.map((reason) {
-            final label = reasonLabels[reason['reason']] ?? '❓ 알 수 없음';
+            final label = reasonLabels[reason['reason']] ?? '알 수 없음';
             final count = reason['count'];
 
             return Padding(

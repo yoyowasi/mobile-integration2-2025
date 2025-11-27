@@ -31,7 +31,7 @@ class ArcPainter extends CustomPainter {
 
     final path = Path(); // moveTo는 아래 로직에 따라 필요 없을 수 있음
 
-    // 🔥 [수정된 부분] 비율이 1.0(60분)이면 꽉 찬 원을 그림
+    // [수정된 부분] 비율이 1.0(60분)이면 꽉 찬 원을 그림
     if (remainRatio >= 1.0) {
       path.addOval(rect); // 그냥 원을 추가
     } else if (remainRatio > 0.0) {
